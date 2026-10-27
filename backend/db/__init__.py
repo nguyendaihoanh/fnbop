@@ -1,0 +1,116 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+# Copyright (C) 2026 Nguyen Dai Hoanh (VNAIGC) <hoanh@vnaigc.com>
+# Additional terms under AGPL-3.0 Section 7 apply; see NOTICE.
+"""
+FnBOps Data Access Layer (Single Source of Truth SQLite WAL)
+Clean architecture interface for database access, re-exporting backend/services/db.
+"""
+
+from services.db import (
+    get_db_path,
+    get_db_connection,
+    init_db,
+    # Staff repository
+    get_staff_accounts_db,
+    upsert_staff_account_db,
+    update_staff_pin_db,
+    toggle_staff_active_db,
+    delete_staff_account_db,
+    get_staff_aliases_db,
+    upsert_staff_alias_db,
+    # Attendance repository
+    load_attendance_logs_from_sqlite,
+    insert_attendance_log_to_sqlite,
+    sync_attendance_logs_to_sqlite,
+    get_attendance_logs_db,
+    get_shift_approvals_db,
+    upsert_shift_approval_db,
+    delete_shift_approval_db,
+    # Payroll repository
+    get_staff_ledgers_db,
+    insert_staff_ledger_db,
+    delete_staff_ledger_db,
+    get_payroll_locks_db,
+    upsert_payroll_lock_db,
+    is_payroll_locked_db,
+    get_payroll_confirmations_db,
+    upsert_payroll_confirmation_db,
+    get_payroll_disbursements_db,
+    upsert_payroll_disbursement_db,
+    # Ops repository
+    get_daily_closings_db,
+    insert_daily_closing_db,
+    get_evaluations_db,
+    insert_evaluation_db,
+    update_evaluation_status_db,
+    get_store_settings_db,
+    upsert_store_setting_db,
+    # Roster repository
+    get_roster_schedule_db,
+    upsert_roster_schedule_db,
+    list_roster_schedules_db,
+    # Notification repository
+    get_push_subscriptions_db,
+    upsert_push_subscription_db,
+    delete_push_subscription_db,
+    insert_notification_dispatch_db,
+    # Security repository
+    record_login_attempt_db,
+    get_failed_login_attempts_db,
+    clear_failed_login_attempts_db,
+    revoke_token_db,
+    is_token_revoked_db,
+    record_access_audit_log_db,
+    bootstrap_sync_staff_auth_to_sqlite
+)
+
+__all__ = [
+    "get_db_path",
+    "get_db_connection",
+    "init_db",
+    "get_staff_accounts_db",
+    "upsert_staff_account_db",
+    "update_staff_pin_db",
+    "toggle_staff_active_db",
+    "delete_staff_account_db",
+    "get_staff_aliases_db",
+    "upsert_staff_alias_db",
+    "load_attendance_logs_from_sqlite",
+    "insert_attendance_log_to_sqlite",
+    "sync_attendance_logs_to_sqlite",
+    "get_attendance_logs_db",
+    "get_shift_approvals_db",
+    "upsert_shift_approval_db",
+    "delete_shift_approval_db",
+    "get_staff_ledgers_db",
+    "insert_staff_ledger_db",
+    "delete_staff_ledger_db",
+    "get_payroll_locks_db",
+    "upsert_payroll_lock_db",
+    "is_payroll_locked_db",
+    "get_payroll_confirmations_db",
+    "upsert_payroll_confirmation_db",
+    "get_payroll_disbursements_db",
+    "upsert_payroll_disbursement_db",
+    "get_daily_closings_db",
+    "insert_daily_closing_db",
+    "get_evaluations_db",
+    "insert_evaluation_db",
+    "update_evaluation_status_db",
+    "get_store_settings_db",
+    "upsert_store_setting_db",
+    "get_roster_schedule_db",
+    "upsert_roster_schedule_db",
+    "list_roster_schedules_db",
+    "get_push_subscriptions_db",
+    "upsert_push_subscription_db",
+    "delete_push_subscription_db",
+    "insert_notification_dispatch_db",
+    "record_login_attempt_db",
+    "get_failed_login_attempts_db",
+    "clear_failed_login_attempts_db",
+    "revoke_token_db",
+    "is_token_revoked_db",
+    "record_access_audit_log_db",
+    "bootstrap_sync_staff_auth_to_sqlite"
+]

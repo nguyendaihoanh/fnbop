@@ -1,0 +1,242 @@
+name: CI / Automated Quality Pipeline
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+      - develop
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  contract-and-bootstrap:
+    name: Schema, Contracts & Cold-Start Bootstrap
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install System & Python Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgl1 libglib2.0-0
+          python -m pip install --upgrade pip setuptools wheel
+          pip install -r backend/requirements.txt
+
+      - name: Audit SQLite Schema, OpenAPI Routes, Duplicate Op IDs & Seed Hygiene
+        env:
+          PYTHONPATH: .:backend
+        run: |
+          python scripts/audit_schema_contracts.py
+
+      - name: Validate Shell Scripts & Docker Compose Config
+        run: |
+          bash -n run_mac.command
+          bash -n scripts/quality_gate.sh
+          bash -n scripts/install_git_hooks.sh
+          bash -n .githooks/pre-push
+          JWT_SECRET_KEY=ci_compose_test_secret_32_characters_long POS_SECRET=ci_compose_pos_secret docker compose config -q
+
+      - name: Cold-Start Zero-Config .env Bootstrap & Fail-Closed Smoke Test
+        run: |
+          COLD_DIR="$(mktemp -d /tmp/fnbops_coldstart_XXXXXX)"
+          tar --exclude='.git' --exclude='.venv' --exclude='node_modules' -cf - . | (cd "$COLD_DIR" && tar -xf -)
+          rm -f "$COLD_DIR/.env" "$COLD_DIR/data/"*.db*
+          (
+            cd "$COLD_DIR"
+            unset JWT_SECRET_KEY TESTING
+            PYTHONPATH=.:backend python -m uvicorn backend.main:app --host 127.0.0.1 --port 8199 >/tmp/coldstart_uvicorn.log 2>&1 &
+            UVICORN_PID=$!
+            trap "kill $UVICORN_PID 2>/dev/null || true" EXIT
+
+            HEALTH_OK=0
+            for i in $(seq 1 30); do
+              if curl -fsS http://127.0.0.1:8199/health | grep -q '"status":"ok"'; then
+                HEALTH_OK=1
+                break
+              fi
+              sleep 0.5
+            done
+
+            if [ "$HEALTH_OK" -ne 1 ]; then
+              echo "ERROR: Cold-start uvicorn failed health check!"
+              cat /tmp/coldstart_uvicorn.log
+              exit 1
+            fi
+
+            test -f "$COLD_DIR/.env" || { echo "ERROR: .env was not auto-bootstrapped!"; exit 1; }
+            BOOT_KEY="$(grep '^JWT_SECRET_KEY=' "$COLD_DIR/.env" | cut -d= -f2-)"
+            if [ "${#BOOT_KEY}" -lt 43 ]; then
+              echo "ERROR: Auto-bootstrapped JWT_SECRET_KEY (${#BOOT_KEY} chars) is weaker than 256-bit!"
+              exit 1
+            fi
+            echo "Verified: Cold-start auto-bootstrapped .env (${#BOOT_KEY}-char key) and /health returned HTTP 200."
+          )
+
+          # Verify explicit empty JWT_SECRET_KEY="" fails closed
+          if JWT_SECRET_KEY="" PYTHONPATH="$COLD_DIR:$COLD_DIR/backend" python -c "import backend.services.auth" 2>/dev/null; then
+            echo "ERROR: Explicit empty JWT_SECRET_KEY='' did NOT fail closed!"
+            exit 1
+          fi
+          echo "Verified: Explicit empty JWT_SECRET_KEY='' fails closed as expected."
+          rm -rf "$COLD_DIR"
+
+  test-backend:
+    name: Backend Tests (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    needs: contract-and-bootstrap
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: "pip"
+
+      - name: Install System Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgl1 libglib2.0-0
+
+      - name: Install Python Dependencies
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          pip install -r backend/requirements.txt
+          pip install pytest pytest-subtests
+
+      - name: Run Backend Test Suite
+        env:
+          TESTING: "1"
+          MOCK_TELEGRAM: "1"
+          JWT_SECRET_KEY: ci_test_super_secure_jwt_secret_key_32_characters_long
+          POS_SECRET: ci_test_super_secure_pos_secret_key_32_characters_long
+          PYTHONPATH: .:backend
+          ON_PREMISE_MODE: "true"
+        run: |
+          pytest tests/ -v --ignore=tests/test_live_system_readiness.py
+
+      - name: Verify Zero Mutation to Tracked Seed Data
+        run: |
+          if [ -n "$(git status --porcelain data/)" ]; then
+            echo "ERROR: Test suite mutated git-tracked files in data/!"
+            git status --short data/
+            git diff data/
+            exit 1
+          fi
+          echo "Verified: 0 tracked files in data/ mutated during test execution."
+
+  build-frontend:
+    name: Frontend Build, Bundle Sync & JS Unit Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 20.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install Frontend Dependencies (Strict Lockfile)
+        working-directory: frontend
+        run: |
+          npm ci
+
+      - name: Verify JS Entrypoint Syntax & Build Production Bundles
+        run: |
+          node -c frontend/mobile.js
+          node -c frontend/app.js
+          node frontend/build.js
+          test -f frontend/dist/mobile.bundle.js
+          test -f frontend/dist/app.min.js
+
+      - name: Verify Committed Production Bundles Match Source (Zero Bundle Drift)
+        run: |
+          if [ -n "$(git status --porcelain frontend/dist/)" ]; then
+            echo "ERROR: frontend/dist/ is out of sync with frontend/src/!"
+            echo "Run 'node frontend/build.js' locally and commit frontend/dist/."
+            git status --short frontend/dist/
+            exit 1
+          fi
+          echo "Verified: Committed frontend/dist/ bundles match source 100%."
+
+      - name: Run Frontend Unit, DOM & CSS Hygiene Suites
+        run: |
+          for js_test in \
+            tests/test_css_hygiene.js \
+            tests/test_e2e_auth_gate.js \
+            tests/test_frontend_identity_matching.js \
+            tests/test_manager_safeguards_eval.js \
+            tests/test_press_hold_checkout.js \
+            tests/test_responsive_desktop_mode.js \
+            tests/test_roster_teammates_swap.js \
+            tests/test_thermal_receipt_and_swipe_gestures.js; do
+            echo "Running $js_test..."
+            node "$js_test"
+          done
+
+  security-audit:
+    name: Security & Vulnerability Audit
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install Security Scanners
+        run: |
+          python -m pip install --upgrade pip
+          pip install bandit pip-audit
+
+      - name: Static Security Analysis with Bandit (Fail on High/Critical)
+        run: |
+          bandit -r backend/ -lll -ii --exclude "*/tests/*,*/node_modules/*"
+
+      - name: Dependency Vulnerability Audit with pip-audit (Fail on Known CVEs)
+        run: |
+          pip-audit -r backend/requirements.txt
+
+      - name: Secret & Credential Leak Guard
+        run: |
+          LEAKS=$(grep -rnEi "([0-9]{9,10}:[a-zA-Z0-9_-]{35}|fallback_secret_if_env_missing|BEGIN (RSA|EC|OPENSSH) PRIVATE KEY)" \
+            backend/ frontend/ data/ scripts/ \
+            --exclude-dir=__pycache__ \
+            --exclude-dir=node_modules \
+            --exclude=quality_gate.sh \
+            --exclude='*.db*' \
+            --exclude='*.png' --exclude='*.jpg' --exclude='*.ico' || true)
+          if [ -n "$LEAKS" ]; then
+            echo "CRITICAL: Hardcoded secret/token pattern detected!"
+            echo "$LEAKS"
+            exit 1
+          fi
+          echo "Secret & Credential Leak Guard passed (0 leaks)."

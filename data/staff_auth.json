@@ -1,0 +1,125 @@
+{
+  "staff_accounts": {
+    "admin": {
+      "full_name": "Chủ Quán (Admin)",
+      "display_name": "Chủ Quán (Admin)",
+      "employee_id": "EMP_ADMIN",
+      "role": "ADMIN",
+      "pin": "pbkdf2_sha256$100000$c666f1647cc67bc19ab2f030f043227c$9d382fd91866bd635a0b3769108bee53b5780591fb1d6c6ba32e96bcf6ea03eb",
+      "position": "MANAGER",
+      "gender": "NAM",
+      "status": "ACTIVE",
+      "hourly_rate": 0,
+      "salary_type": "FIXED",
+      "fixed_salary": 0,
+      "token_version": 1,
+      "phone": "",
+      "allowed_roles": [],
+      "aliases": [
+        "Chủ Quán",
+        "ADMIN",
+        "Chủ Quán (Admin)",
+        "admin"
+      ],
+      "sheet_names": [
+        "ADMIN",
+        "Chủ Quán",
+        "Chủ Quán (Admin)",
+        "admin"
+      ],
+      "confirmations": {}
+    },
+    "phache": {
+      "full_name": "Nhân Viên Pha Chế",
+      "display_name": "Nhân Viên Pha Chế",
+      "employee_id": "EMP_BAR",
+      "role": "STAFF",
+      "pin": "pbkdf2_sha256$100000$b1c40d87700bfcb06355ae913477f004$5e3dae9cbb7021e56b264e168e0b0d14340ae7be9aa60cf11a3a3c2553d36105",
+      "position": "BARISTA",
+      "gender": "NAM",
+      "status": "ACTIVE",
+      "hourly_rate": 22000,
+      "salary_type": "HOURLY",
+      "fixed_salary": 0,
+      "token_version": 1,
+      "phone": "",
+      "allowed_roles": [],
+      "aliases": [
+        "Pha Chế",
+        "Nhân Viên Pha Chế",
+        "phache",
+        "barista",
+        "PHACHE"
+      ],
+      "sheet_names": [
+        "PHACHE",
+        "Pha Chế",
+        "Nhân Viên Pha Chế",
+        "phache"
+      ],
+      "confirmations": {}
+    },
+    "nhanvien": {
+      "full_name": "Nhân Viên Phục Vụ",
+      "display_name": "Nhân Viên Phục Vụ",
+      "employee_id": "EMP_SRV",
+      "role": "STAFF",
+      "pin": "pbkdf2_sha256$100000$1a2501fc00b9aa69bbeaef898b717530$a457bdf4edfb1a85b124def150530e266a647e9baa03d1d467d34be9f048e8f6",
+      "position": "SERVICE",
+      "gender": "NU",
+      "status": "ACTIVE",
+      "hourly_rate": 18000,
+      "salary_type": "HOURLY",
+      "fixed_salary": 0,
+      "token_version": 1,
+      "phone": "",
+      "allowed_roles": [],
+      "aliases": [
+        "Nhân Viên Phục Vụ",
+        "nhanvien",
+        "Nhân Viên",
+        "NHANVIEN"
+      ],
+      "sheet_names": [
+        "NHANVIEN",
+        "Nhân Viên",
+        "Nhân Viên Phục Vụ",
+        "nhanvien"
+      ],
+      "confirmations": {}
+    },
+    "manager": {
+      "full_name": "Quản Lý Ca",
+      "display_name": "Quản Lý Ca",
+      "employee_id": "EMP_MGR",
+      "role": "MANAGER",
+      "pin": "pbkdf2_sha256$100000$b94202af4f8d3b41afbe1f10f852de04$b8e022a629581cd6801e0297fac64ed2be5218087b7bda6e86dc5070ffc97666",
+      "position": "MANAGER",
+      "gender": "NU",
+      "status": "ACTIVE",
+      "hourly_rate": 25000,
+      "salary_type": "HOURLY",
+      "fixed_salary": 0,
+      "token_version": 1,
+      "phone": "",
+      "allowed_roles": [],
+      "aliases": [
+        "Quản Lý Ca",
+        "MANAGER",
+        "manager"
+      ],
+      "sheet_names": [
+        "MANAGER",
+        "Quản Lý Ca",
+        "manager"
+      ],
+      "confirmations": {}
+    }
+  },
+  "payroll_locks": {
+    "8": {
+      "status": "OPEN",
+      "message": ""
+    }
+  }
+}

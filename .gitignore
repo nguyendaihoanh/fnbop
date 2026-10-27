@@ -1,0 +1,73 @@
+# Environment & Secrets
+.env
+.env.*
+!.env.example
+config/.env
+*.pickle
+token_sheets.pickle
+service-account.json
+data_snapshot_macmini/
+tests/mock_*.json
+
+# Data runtime & databases
+data/*.db*
+data/*.lock
+data/*.log
+data/*.bak*
+data/vapid_keys.json
+data/backups/
+data/snapshots/*.json
+data/zalo_session/
+data/outbox/
+backend/data/*.db*
+backend/data/*.lock
+
+# Backups & Logs
+*.bak*
+*.log
+*.lock
+*.db*
+_backups/
+
+# Python Cache & Testing Artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+.hypothesis/
+
+# Local test and scratch files
+tests/*.db*
+tests/*.lock
+scratch/
+*.test_tmp
+*.tmp
+task_artifacts/
+dist_preview/
+frontend/chunks/
+frontend/dist/*.map
+frontend/dist/chunks/*.map
+
+# Build and package distribution
+/dist/
+build/
+/build/
+*.egg-info/
+
+# OS Specific
+.DS_Store
+Thumbs.db
+.venv
+.venv/
+node_modules/
+
+# PID files
+*.pid
+gateway.pid
+
+# Private live test suites
+tests/test_live_production_suite.py

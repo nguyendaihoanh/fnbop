@@ -1,0 +1,92 @@
+{
+  "store_id": "fnb_starter",
+  "store_name": "Quán Cà Phê Mẫu (F&B Starter)",
+  "timezone": "Asia/Ho_Chi_Minh",
+  "pos_mode": "manual",
+  "shifts": {
+    "sang": {
+      "key": "sang",
+      "name": "Ca Sáng",
+      "official_start": "07:00",
+      "official_end": "12:00",
+      "tolerance_limit": "07:15",
+      "min_checkout": "11:30",
+      "standard_mins": 300,
+      "roles": {
+        "manager": 1,
+        "barista": 1,
+        "service": 2
+      },
+      "window": {
+        "start": "06:30",
+        "end": "13:30"
+      }
+    },
+    "chieu": {
+      "key": "chieu",
+      "name": "Ca Chiều",
+      "official_start": "12:00",
+      "official_end": "17:30",
+      "tolerance_limit": "12:15",
+      "min_checkout": "17:00",
+      "standard_mins": 330,
+      "roles": {
+        "manager": 1,
+        "barista": 1,
+        "service": 2
+      },
+      "window": {
+        "start": "11:30",
+        "end": "18:30"
+      }
+    },
+    "toi": {
+      "key": "toi",
+      "name": "Ca Tối",
+      "official_start": "17:30",
+      "official_end": "22:30",
+      "tolerance_limit": "17:45",
+      "min_checkout": "22:00",
+      "standard_mins": 300,
+      "roles": {
+        "manager": 1,
+        "barista": 1,
+        "service": 2
+      },
+      "window": {
+        "start": "17:00",
+        "end": "23:59"
+      }
+    }
+  },
+  "roster_rules": {
+    "registration_window": {
+      "open_iso_day": 5,
+      "close_iso_day": 7,
+      "close_time": "12:00"
+    },
+    "gender_constraints": {
+      "enabled": false,
+      "service_max_female": 99,
+      "service_min_male": 0
+    },
+    "shifts_per_week": {
+      "min": 2,
+      "max": 14,
+      "default_target": 6
+    }
+  },
+  "holiday_rules": {
+    "holidays": [
+      "01/01",
+      "30/04",
+      "01/05",
+      "02/09"
+    ],
+    "rate_multiplier": 2.0
+  },
+  "auto_close_rules": {
+    "max_unclosed_hours": 2,
+    "daily_cutoff": "23:59"
+  }
+}

@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="FnBOps logo">
+  <title>FnBOps logo</title>
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1E293B"/>
+      <stop offset="100%" stop-color="#0F172A"/>
+    </linearGradient>
+    <linearGradient id="terraGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#E07A5F"/>
+      <stop offset="100%" stop-color="#D97757"/>
+    </linearGradient>
+    <linearGradient id="emeraldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#34D399"/>
+      <stop offset="100%" stop-color="#10B981"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" fill="#0F172A"/>
+  <g transform="translate(256 256) scale(0.78) translate(-262 -256)">
+  <g id="fnbops-mark">
+    <!-- Append-only ledger spine -->
+    <rect x="116" y="112" width="56" height="288" rx="20" fill="#F5F2EB"/>
+    <!-- Morning shift bitmask bar -->
+    <rect x="196" y="112" width="196" height="56" rx="20" fill="url(#terraGrad)"/>
+    <circle cx="364" cy="140" r="10" fill="#F5F2EB"/>
+    <!-- Afternoon shift bar shaped as espresso cup -->
+    <path d="M 216 204 H 324 A 20 20 0 0 1 344 224 V 240 A 48 48 0 0 1 296 288 H 244 A 48 48 0 0 1 196 240 V 224 A 20 20 0 0 1 216 204 Z" fill="#F5F2EB"/>
+    <path d="M 344 220 H 364 A 24 24 0 0 1 388 244 A 24 24 0 0 1 364 268 H 340" fill="none" stroke="url(#terraGrad)" stroke-width="18" stroke-linecap="round"/>
+    <!-- Evening shift / POS closing bar (saucer) -->
+    <rect x="196" y="344" width="156" height="56" rx="20" fill="#334155"/>
+    <!-- Verified ledger status -->
+    <circle cx="384" cy="372" r="24" fill="url(#emeraldGrad)"/>
+    <path d="M 374 372 L 381 379 L 395 365" fill="none" stroke="#0F172A" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  </g>
+</svg>

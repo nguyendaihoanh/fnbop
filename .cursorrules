@@ -1,0 +1,367 @@
+# FNBOPS — ENTERPRISE UI/UX & FRONTEND ARCHITECTURE RULES
+> **ROLE:** You are a Principal Frontend Architect & Apple HIG Product Designer working on **FnBOps Vận Hành (FnBOps)** — a mobile-first F&B Operations, Attendance, Roster & Payroll WebApp.
+> **MANDATE:** Before writing or modifying ANY HTML, CSS, or JS, you MUST strictly enforce every rule in this document. Violations of the "STRICT BANS" section are considered build-breaking errors.
+
+---
+
+## 1. STRICT BANS (ZERO TOLERANCE)
+
+1. **NO OS EMOJIS FOR UI ICONS:**
+   - **BANNED:** `🏢, 🔔, ⏰, 🏪, 📶, 🖥️, ⏱️, 📦, ✈️, 💬, 📱, ⚡, ➕, ☕, 🛎️, 👔, 🎲, ⚠️, ⭐, 🔓, 🗑️, 🔐, 👥, 🏖️, 🖨️, 📥, 📋, ☀️, 🌙, ✓, ✕, ▾`
+   - **EXCEPTION:** Country flags (`🇻🇳, 🇬🇧, 🇹🇭, 🇨🇳, 🇷🇺`) are ONLY permitted inside the Language Switcher component (`#languagePickerSheet` and `#btnTopbarLangToggle`).
+   - **REPLACEMENT:** Always use `<iconify-icon icon="solar:..."></iconify-icon>` from the preloaded `vendor/solar-icons-bundle.js`.
+
+2. **NO INLINE SVGs:**
+   - Do NOT write raw `<svg>...</svg>` tags in HTML when a Solar Icon exists.
+   - Exception: Structural UI vectors like `#navCradleSvg`.
+
+3. **NO STATIC INLINE STYLES (`style="..."`):**
+   - **BANNED:** Writing static layout, spacing, colors, borders, or typography in `style="..."` attributes inside `index.html` markup or JS template literals.
+   - **ALLOWED (JS Runtime Exceptions):** Dynamic inline properties mutated via JavaScript DOM APIs for physics, coordinates, and state transitions:
+     1. `#navSlidingPill` coordinates (`left`, `width`, `transform`) computed via `getBoundingClientRect()`.
+     2. `switchTab()` view transitions (`display`, `opacity`, `visibility`, `pointerEvents`).
+     3. Dynamic data bars (`.seg-fill` widths, `#pressHoldProgressBar` width, workload bar percentages).
+
+4. **NO `!important` SPAM:**
+   - Never use `!important` to fix specificity wars. Use clean Atomic CSS classes and proper token inheritance.
+
+5. **NO HARDCODED HEX COLORS OR LEGACY TOKENS:**
+   - **BANNED HEX:** `#059669`, `#10B981`, `#dc2626`, `#d97706`, `#18222F`, `#334155`, `#b2c2a6`, `#e6d8c5`.
+   - **BANNED LEGACY VARS:** Do not mix `--text-primary` with `--text-main`, or `--accent-coral` with `--c-coral`. Use ONLY the canonical Design Tokens defined in Section 3.
+
+6. **NO `MutationObserver` DOM PATCHING HACKS:**
+   - Never attach `MutationObserver` in `index.html` to rewrite text, strip emojis, or patch styles after `mobile.js` renders. Fix the source strings directly in `mobile.js` and `src/i18n/index.js`.
+
+7. **NO HARDCODED MOCK DATA IN HTML:**
+   - Never hardcode fake financial numbers (`5.208.800 đ`, `113.050 đ`, `58 ca`, `24 NV`) in `index.html` that cause Flash of Unstyled/Fake Content (FOUC). Use `--` or `.skeleton` placeholders until JS hydrates the DOM.
+
+8. **LUCIAN UX/UI & PROGRESSIVE DISCLOSURE (MANDATORY):**
+   - **Progressive Disclosure:** Luôn ưu tiên bố cục cô đọng cấp 1 (Compact Pill / 1 dòng tóm tắt). Thông tin chi tiết, thao tác phức tạp chỉ mở ra khi người dùng chủ động chạm vào (Collapsible Cards, Accordion, Action Sheets).
+   - **Micro-Interactions & Spring Physics:** Mọi chuyển động nút bấm, sheet, pill transition sử dụng `--ux-spring: cubic-bezier(.34, 1.45, .64, 1)` hoặc `--ux-ease: cubic-bezier(.2, .8, .2, 1)` kèm rung xúc giác (tactile feedback).
+   - **Anti-Slop Copywriting:** Tuyệt đối cấm ngôn từ máy móc, kỹ trị (quản trị, check-in, đếm ngược giây, định biên, ca treo). Sử dụng câu từ tự nhiên đời thực của nhân viên quán cafe.
+
+---
+
+## 2. SOLAR ICONS CATALOG (SINGLE SOURCE OF TRUTH)
+
+The project preloads `vendor/iconify-icon.min.js` and `vendor/solar-icons-bundle.js`.
+- **Syntax:** `<iconify-icon icon="solar:ICON-NAME" width="18" height="18"></iconify-icon>`
+- **Visual Hierarchy Rule (iOS HIG):**
+  - Use **`-linear`** variant for inactive tabs, secondary actions, input prefixes, and chevrons.
+  - Use **`-bold`** or **`-bold-duotone`** variant for active tabs, Bento KPI headers, primary CTAs, and status alerts.
+
+### Mandatory Icon Lookup Table (Use ONLY these verified names):
+
+| Domain / Function | Inactive / Outline (`linear`) | Active / Filled (`bold`) |
+| :--- | :--- | :--- |
+| **Brand / Cafe Logo** | `solar:cup-hot-linear` | `solar:cup-hot-bold` |
+| **Tab 1: Vận Hành (Ops)** | `solar:chart-2-linear` | `solar:chart-2-bold` |
+| **Tab 2: Lịch Ca (Roster)** | `solar:calendar-date-linear` | `solar:calendar-date-bold` |
+| **Tab 3: Chấm Công (Check-in)** | `solar:clock-circle-linear` | `solar:clock-circle-bold` |
+| **Tab 4: Phiếu Lương (Payslip)** | `solar:bill-list-linear` | `solar:bill-list-bold` |
+| **KPI: Quỹ Lương / Tiền** | `solar:wallet-money-linear` | `solar:wallet-money-bold` |
+| **KPI: Tăng Ca / Đồng Hồ** | `solar:alarm-linear` | `solar:alarm-bold` |
+| **KPI: Chuyên Cần / Bảo Mật** | `solar:shield-check-linear` | `solar:shield-check-bold` |
+| **KPI: Hiệu Suất / Nhân Sự** | `solar:users-group-rounded-linear` | `solar:users-group-rounded-bold` |
+| **Ca Sáng (Morning Shift)** | `solar:sun-2-linear` | `solar:sun-2-bold` |
+| **Ca Chiều (Afternoon Shift)** | `solar:cloud-sun-2-linear` | `solar:cloud-sun-2-bold` |
+| **Ca Tối / Dark Mode** | `solar:moon-linear` | `solar:moon-bold` |
+| **WiFi Hợp Lệ / Mạng** | `solar:wi-fi-router-linear` | `solar:wi-fi-router-bold` |
+| **Cảnh Báo / Vi Phạm / Phạt** | `solar:danger-triangle-linear` | `solar:danger-triangle-bold` |
+| **Thông Báo / Chuông** | `solar:bell-bing-linear` | `solar:bell-bing-bold` |
+| **Thưởng Nóng / Ngôi Sao** | `solar:star-linear` | `solar:star-bold` |
+| **Thành Công / Đã Duyệt** | `solar:check-circle-linear` | `solar:check-circle-bold` |
+| **Từ Chối / Đóng Modal (X)** | `solar:close-circle-linear` | `solar:close-circle-bold` |
+| **Thêm Mới (+)** | `solar:add-circle-linear` | `solar:add-circle-bold` |
+| **Chỉnh Sửa / Bút** | `solar:pen-new-square-linear` | `solar:pen-new-square-bold` |
+| **Xóa / Thùng Rác** | `solar:trash-bin-trash-linear` | `solar:trash-bin-trash-bold` |
+| **Mở Khóa / Mở Lại Ca** | `solar:lock-keyhole-minimalistic-unlocked-linear` | `solar:lock-keyhole-minimalistic-unlocked-bold` |
+| **Khóa Kỳ Lương / PIN** | `solar:lock-keyhole-minimalistic-linear` | `solar:lock-keyhole-minimalistic-bold` |
+| **Chìa Khóa / Cấp Tài Khoản** | `solar:key-minimalistic-linear` | `solar:key-minimalistic-bold` |
+| **Cài Đặt Quán (Settings)** | `solar:settings-linear` | `solar:settings-bold` |
+| **Cửa Hàng / Thương Hiệu** | `solar:shop-linear` | `solar:shop-bold` |
+| **Máy POS / Màn Hình PC** | `solar:monitor-smartphone-linear` | `solar:monitor-smartphone-bold` |
+| **Sao Lưu Database (Backup)** | `solar:server-square-cloud-linear` | `solar:server-square-cloud-bold` |
+| **Gửi Tin Nhắn / Telegram** | `solar:plain-linear` | `solar:plain-bold` |
+| **Zalo / Chat / Phản Hồi** | `solar:chat-round-dots-linear` | `solar:chat-round-dots-bold` |
+| **Quét Mã QR** | `solar:qr-code-linear` | `solar:qr-code-bold` |
+| **Xuất File / Tải Xuống** | `solar:download-minimalistic-linear` | `solar:download-minimalistic-bold` |
+| **In Phiếu Lương (Print)** | `solar:printer-minimalistic-linear` | `solar:printer-minimalistic-bold` |
+| **Sao Chép (Copy)** | `solar:copy-linear` | `solar:copy-bold` |
+| **Làm Mới (Refresh)** | `solar:restart-linear` | `solar:restart-bold` |
+| **Tìm Kiếm (Search)** | `solar:magnifer-linear` | `solar:magnifer-bold` |
+| **Bộ Lọc (Filter)** | `solar:tuning-2-linear` | `solar:tuning-2-bold` |
+| **Ẩn / Hiện Mật Khẩu** | `solar:eye-linear` / `solar:eye-closed-linear` | `solar:eye-bold` |
+| **Đăng Xuất / Check-out** | `solar:logout-2-linear` | `solar:logout-2-bold` |
+| **Đổi Ca (Peer Swap)** | `solar:transfer-horizontal-linear` | `solar:transfer-horizontal-bold` |
+| **Menu 3 Chấm (More)** | `solar:menu-dots-linear` | `solar:menu-dots-bold` |
+| **Mũi Tên Điều Hướng** | `solar:alt-arrow-left-linear` / `right` / `down` | — |
+
+---
+
+## 3. DESIGN TOKENS & VISUAL HIERARCHY
+
+### 3.1. Canonical Color Tokens (Light & Warm Espresso Dark Theme)
+Use ONLY these CSS variables. Never invent new color variables.
+
+```css
+:root {
+  /* Surfaces (Light) */
+  --bg-app: #f4f5f7;
+  --bg-card: #ffffff;
+  --bg-card-sub: #f8fafc;
+  --bg-input: #eef0f4;
+  --glass-bg: rgba(255, 255, 255, 0.88);
+
+  /* Typography (Cool Slate Hierarchy) */
+  --text-main: #0f172a;
+  --text-sub: #475569;
+  --text-faint: #94a3b8;
+
+  /* Borders & Elevations */
+  --border-line: rgba(15, 23, 42, 0.08);
+  --border-divider: rgba(15, 23, 42, 0.05);
+  --shadow-soft: 0 2px 8px rgba(15, 23, 42, 0.04);
+  --shadow-float: 0 12px 32px -4px rgba(15, 23, 42, 0.12);
+
+  /* Semantic Accents (Apple HIG) */
+  --c-brand: #ee5d36;
+  --c-brand-bg: rgba(238, 93, 54, 0.12);
+  --c-blue: #007aff;
+  --c-blue-bg: rgba(0, 122, 255, 0.12);
+  --c-green: #10b981;
+  --c-green-bg: rgba(16, 185, 129, 0.12);
+  --c-amber: #f59e0b;
+  --c-amber-bg: rgba(245, 158, 11, 0.14);
+  --c-coral: #ef4444;
+  --c-coral-bg: rgba(239, 68, 68, 0.12);
+  --c-cyan: #06b6d4;
+  --c-cyan-bg: rgba(6, 182, 212, 0.12);
+
+  /* Radii (4 Strict Steps) */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-full: 9999px;
+
+  /* Motion Curves */
+  --spring-ios: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+[data-theme="dark"] {
+  /* Warm Espresso Surfaces (FnBOps Signature Luxury) */
+  --bg-app: #12100e;
+  --bg-card: #1c1917;
+  --bg-card-sub: #26221f;
+  --bg-input: #2e2925;
+  --glass-bg: rgba(28, 25, 23, 0.88);
+
+  /* Warm Stone Typography (Zero Muddy Green #b2c2a6) */
+  --text-main: #fafaf9;
+  --text-sub: #d6d3d1;
+  --text-faint: #a8a29e;
+
+  --border-line: rgba(255, 248, 240, 0.08);
+  --border-divider: rgba(255, 248, 240, 0.05);
+  --shadow-soft: 0 4px 16px rgba(0, 0, 0, 0.35);
+
+  --c-brand: #ff6b47;
+  --c-brand-bg: rgba(255, 107, 71, 0.18);
+  --c-blue: #0a84ff;
+  --c-blue-bg: rgba(10, 132, 255, 0.18);
+  --c-green: #30d158;
+  --c-green-bg: rgba(48, 209, 88, 0.18);
+  --c-amber: #ff9f0a;
+  --c-amber-bg: rgba(255, 159, 10, 0.18);
+  --c-coral: #ff453a;
+  --c-coral-bg: rgba(255, 69, 58, 0.18);
+  --c-cyan: #64d2ff;
+  --c-cyan-bg: rgba(100, 210, 255, 0.18);
+}
+```
+
+### 3.2. Visual Hierarchy Laws ("Quiet by Default, Loud on Exception")
+
+1. **Neutral Normal States:** When a KPI or shift is healthy/normal (`Định mức`, `Đã duyệt`, `100%`, `0 ca trống`), style its status pill with **neutral gray** (`background: var(--bg-input); color: var(--text-sub)`). Reserve `--c-coral` (Red) and `--c-amber` (Orange) strictly for **anomalies requiring action** (e.g., `Chờ duyệt > 0`, `Quên Check-out > 0`, `Thiếu người`).
+2. **One Hero Value per Card:** Each Bento KPI card may contain at most **3 visual layers**:
+   - **Header:** Icon + Title (`--text-sm`, weight `500`, `--text-sub`) + Status Pill on the right.
+   - **Hero Metric:** Full-width single line (`--text-lg` or `--text-xl`, weight `700`, `--font-mono`, `tabular-nums`).
+   - **Footer Submetrics:** Max 2–3 compact key-value pairs. **NEVER render fake random dot-matrices (`.dot-matrix`).**
+3. **Action-First Ordering:** Always place actionable alerts (Pending OT, Hanging Shifts, Missing Roster Slots) ABOVE static analytical charts.
+
+---
+
+## 4. TYPOGRAPHY & OFFLINE-FIRST GLYPH SYSTEM
+
+### 4.1. 100% Offline-First Font Stack
+- Because POS terminals operate Local-First/Offline, **remove external Google Fonts `<link>` tags** when local fonts are bundled.
+- **Primary UI Font (`--font-sans`):** `'Be Vietnam Pro', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif` (immediate system fallback if webfont is offline).
+- **Numeric / Data Font (`--font-mono`):** `'Geist Mono', ui-monospace, 'SF Mono', monospace` with `font-variant-numeric: tabular-nums`.
+- **Rule:** Every currency amount (`đ`), work duration (`330p`, `18.4h`), clock (`06:00`), percentage (`97%`), and PIN input MUST use `var(--font-mono)` + `tabular-nums`.
+
+### 4.2. Strict 6-Step Type Scale
+**BANNED:** Arbitrary sizes like `9px`, `9.5px`, `10px`, `10.5px`, `11.5px`, `12.5px`.
+- `--text-xs`: `11px` (line-height `1.35`) — Badges, micro-labels, uppercase section caps.
+- `--text-sm`: `12px` (line-height `1.4`) — Secondary descriptions, table/list subtext, filter pills.
+- `--text-base`: `14px` (line-height `1.45`) — List item titles, staff names, standard buttons.
+- `--text-md`: `16px` (line-height `1.4`) — Card titles, Sheet headers, **and ALL `<input>`, `<select>`, `<textarea>` fields** (prevents iOS Safari auto-zoom on focus).
+- `--text-lg`: `20px` (line-height `1.15`, letter-spacing `-0.02em`) — Bento KPI Hero numbers.
+- `--text-xl`: `26px` (line-height `1.1`, letter-spacing `-0.03em`) — Primary Payroll Total & Live Check-in Clock.
+
+### 4.3. Font Weight Discipline
+- Only load and use weights: `400` (Regular), `500` (Medium), `600` (SemiBold), `700` (Bold).
+- **BANNED:** `font-weight: 750` or `font-weight: 800`.
+- **Contrast Rule:** Form labels, sub-descriptions, and inactive tabs MUST be `400` or `500`. Only primary headings, active states, and hero numbers use `600` or `700`.
+
+---
+
+## 5. ATOMIC CSS COMPONENT ARCHITECTURE
+
+Never style elements ad-hoc. Always compose UI using these canonical Atomic classes:
+
+### 5.1. Atom: Buttons (`.ui-btn`)
+All interactive buttons must have a minimum touch target of `40px–44px` height and tactile press feedback:
+```css
+.ui-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 42px;
+  padding: 0 14px;
+  border-radius: var(--radius-md);
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  font-weight: 600;
+  border: 1px solid transparent;
+  cursor: pointer;
+  user-select: none;
+  transition: transform 0.15s var(--ease-out-expo), background 0.15s ease, opacity 0.15s ease;
+}
+.ui-btn:active { transform: scale(0.96); }
+.ui-btn[disabled], .ui-btn[data-busy="true"] { opacity: 0.6; pointer-events: none; }
+
+.ui-btn--primary   { background: var(--c-brand); color: #ffffff; }
+.ui-btn--success   { background: var(--c-green); color: #ffffff; }
+.ui-btn--danger    { background: var(--c-coral-bg); color: var(--c-coral); border-color: rgba(239, 68, 68, 0.25); }
+.ui-btn--secondary { background: var(--bg-card-sub); color: var(--text-main); border-color: var(--border-line); }
+.ui-btn--sm        { min-height: 34px; padding: 0 10px; font-size: var(--text-sm); border-radius: var(--radius-sm); }
+```
+
+### 5.2. Atom: Form Controls (`.ui-input`, `.ui-select`)
+```css
+.ui-input, .ui-select, .ui-textarea {
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 12px;
+  font-size: var(--text-md); /* 16px: mandatory to prevent iOS Safari zoom */
+  font-family: var(--font-sans);
+  color: var(--text-main);
+  background: var(--bg-input);
+  border: 1px solid var(--border-line);
+  border-radius: var(--radius-md);
+  box-sizing: border-box;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.ui-input:focus, .ui-select:focus, .ui-textarea:focus {
+  outline: none;
+  border-color: var(--c-blue);
+  background: var(--bg-card);
+}
+```
+
+### 5.3. Atom: Unified iOS Toggle Switch (`.ui-switch`)
+```html
+<label class="ui-switch">
+  <input type="checkbox" id="exampleToggle">
+  <span class="ui-switch__track"></span>
+</label>
+```
+```css
+.ui-switch {
+  position: relative;
+  display: inline-block;
+  width: 44px;
+  height: 26px;
+  flex-shrink: 0;
+}
+.ui-switch input { opacity: 0; width: 0; height: 0; }
+.ui-switch__track {
+  position: absolute;
+  inset: 0;
+  background: var(--bg-input);
+  border: 1px solid var(--border-line);
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: background 0.25s var(--spring-ios);
+}
+.ui-switch__track::before {
+  content: "";
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  left: 2px;
+  bottom: 2px;
+  background: #ffffff;
+  border-radius: 50%;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  transition: transform 0.25s var(--spring-ios);
+}
+.ui-switch input:checked + .ui-switch__track {
+  background: var(--c-green);
+  border-color: transparent;
+}
+.ui-switch input:checked + .ui-switch__track::before {
+  transform: translateX(18px);
+}
+```
+
+---
+
+## 6. MOTION, HAPTICS & INTERACTION DESIGN
+
+1. **Spring Physics Everywhere:**
+   - Bottom Sheets (`.sheet-modal`), Segmented Tab Pills, and Toast notifications MUST animate using `var(--spring-ios)` (`cubic-bezier(0.22, 1, 0.36, 1)`).
+2. **Haptic Feedback Integration:**
+   - Trigger `navigator.vibrate?.(12)` on primary tab switches, toggle switches, and quick-pill selections.
+   - Trigger `navigator.vibrate?.([30, 40, 70])` upon completing the 1.2s Press-and-Hold Check-out (`#btnPressHoldCheckout`).
+3. **Bottom Sheet Ergonomics:**
+   - Every `.sheet-modal` must support closing via backdrop tap, `.modal-close-btn` (`44x44px` hit area), AND downward touch-drag on `.sheet-grabber`.
+4. **Progressive Disclosure (Anti-Clutter):**
+   - Never stack more than 2 filter rows above a scrollable list on mobile. Combine Search + Role Filter into a single horizontal row.
+   - Auto-calculate derived fields in forms (e.g., automatically compute shift duration in minutes from Start Time and End Time instead of forcing manual math).
+
+---
+
+## 7. MICROCOPY & ENTERPRISE VIETNAMESE TONE
+
+Maintain a **clear, respectful, enterprise-grade Vietnamese tone**. Never use regional slang, developer jargon, or internal chat shorthand in the UI.
+
+| Banned Phrase (Do NOT Use) | Approved Enterprise Copy (MUST Use) |
+| :--- | :--- |
+| `Tài khoản (vd: anhthy, vinh, phat)` | `Nhập tên đăng nhập (VD: nv_01)` |
+| `10` (on Month Pill) | `Thg 10/2026` (or `Tháng 10`) |
+| `Báo Cáo` (on Incident/Bonus button) | `Thưởng / Phạt` |
+| `✕ Cắt về` / `✓ Duyệt đủ` | `Tính chuẩn ca` / `Duyệt OT` |
+| `Quên Ra Ca` (in tight 3-tab header) | `Quên Check-out` (or `Chưa ra ca`) |
+| `Đóng ca quên ra` | `Chốt ca quên Check-out` |
+| `Báo Cáo Tháng Executive` (`Lieflat`) | `Báo Cáo Tổng Hợp Tháng` (`Bản in`) |
+| `Xem Toàn Màn Hình` (`Khung 500px`) | `Chế Độ Khung Rộng` (`Mặc định`) |
+| `...snapshot Database qua SQLite WAL...` | `Sao lưu toàn bộ dữ liệu hệ thống an toàn (không gây gián đoạn ca trực).` |
+| `...thẻ lương Dark Luxury và bắn vào Zalo` | `Tự động tạo ảnh phiếu lương và gửi qua Zalo khi chốt kỳ lương.` |
+| `...Check-out nghen, hỗ trợ cái!` | `Thời gian ca làm đã kết thúc. Vui lòng bấm Check-out để ghi nhận giờ công.` |
+| `Chọn nhân sự từ Sheet` | `Chọn hồ sơ nhân sự` |
+
+---
+
+## 8. SAFE INCREMENTAL REFACTORING PROTOCOL (ZERO-REGRESSION LAW)
+
+1. **NEVER REWRITE `index.html` IN ONE SHOT:**
+   - `index.html` contains hundreds of mission-critical DOM IDs bound to `opsModule`, `attendanceModule`, `rosterModule`, and `storeConfigModule`.
+   - Any refactoring MUST be executed in small, surgical patches (`replace_file_content` / targeted diffs) — never regenerate or truncate the whole file.
+2. **DOM ID & DATA-ATTRIBUTE IMMUTABILITY:**
+   - **STRICTLY FORBIDDEN** to rename, remove, or alter any existing `id="..."`, `data-tab="..."`, `data-role="..."`, `data-disb="..."`, `data-lang="..."`, or `onclick="..."` hooks without updating the corresponding JS module in the same atomic step.
+3. **MANDATORY VERIFICATION GATE:**
+   - Execute refactoring in isolated phases (Phase 1: CSS Tokens & Local Fonts ➔ Phase 2: Solar Icons replacement ➔ Phase 3: Form Atoms & Switches ➔ Phase 4: Microcopy & Layout).
+   - Run automated tests / Puppeteer smoke tests after EACH phase before proceeding to the next.

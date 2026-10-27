@@ -1,0 +1,719 @@
+{
+  "version": "1.0",
+  "updated_at": "2026-09-08",
+  "roles": {
+    "pha_che": {
+      "role_id": "pha_che",
+      "role_name": "Pha Chế (Barista)",
+      "department": "Quầy Bar",
+      "phases": {
+        "open": {
+          "phase_name": "Đầu Ca (Mở Quán)",
+          "time_window": "Trước giờ mở cửa 15-30 phút",
+          "tasks": [
+            {
+              "id": "pc_01",
+              "task": "Khởi động máy pha Espresso, xả nước họng pha, kiểm tra đồng hồ áp suất (9-10 bar) và nhiệt độ ổn định."
+            },
+            {
+              "id": "pc_02",
+              "task": "Kiểm tra hạn sử dụng sữa tươi, syrup, trà và các nguyên liệu tươi trong tủ mát."
+            },
+            {
+              "id": "pc_03",
+              "task": "Chuẩn bị đá bi đầy hộc chứa, tráng rửa sạch sẽ các dụng cụ shaker, ca đong (jigger), thìa bar."
+            },
+            {
+              "id": "pc_04",
+              "task": "Pha test 1 ly Espresso chuẩn để hiệu chỉnh độ mịn cối xay hạt cafe (Calibrate espresso flow rate)."
+            }
+          ]
+        },
+        "running": {
+          "phase_name": "Trong Ca (Vận Hành)",
+          "time_window": "Xuyên suốt thời gian phục vụ",
+          "tasks": [
+            {
+              "id": "pc_05",
+              "task": "Pha chế đúng định lượng theo công thức chuẩn của quán, đảm bảo thẩm mỹ ly nước."
+            },
+            {
+              "id": "pc_06",
+              "task": "Vệ sinh cần gạt (portafilter) và lau sạch vòi đánh sữa bằng khăn ẩm chuyên dụng ngay sau mỗi lần pha."
+            },
+            {
+              "id": "pc_07",
+              "task": "Chủ động báo cho Thu ngân khi nguyên liệu trong quầy chạm mức cảnh báo sắp hết (dưới 20%)."
+            },
+            {
+              "id": "pc_08",
+              "task": "Giữ bề mặt quầy pha chế luôn khô ráo, sạch bóng; không để tồn đọng ly bẩn tại bồn rửa."
+            }
+          ]
+        },
+        "close": {
+          "phase_name": "Cuối Ca (Đóng Quán)",
+          "time_window": "Sau khi hết khách / kết thúc ca",
+          "tasks": [
+            {
+              "id": "pc_09",
+              "task": "Xả và ngâm vòi đánh sữa, vệ sinh họng pha máy Espresso bằng bột vệ sinh chuyên dụng (backflush)."
+            },
+            {
+              "id": "pc_10",
+              "task": "Tháo và rửa khay hứng nước thải, cối xay cafe; đậy kín nắp phễu chứa hạt cafe tránh ẩm."
+            },
+            {
+              "id": "pc_11",
+              "task": "Kiểm kê số lượng sữa tươi, nguyên vật liệu tồn cuối ca ghi vào sổ theo dõi nguyên liệu."
+            },
+            {
+              "id": "pc_12",
+              "task": "Đổ rác quầy bar, tắt nguồn máy xay, máy sinh tố, ngắt điện các thiết bị gia nhiệt trước khi rời quầy."
+            }
+          ]
+        }
+      }
+    },
+    "phuc_vu_trong_nha": {
+      "role_id": "phuc_vu_trong_nha",
+      "role_name": "Phục Vụ Bên Trong",
+      "department": "Khối Phục Vụ",
+      "shifts": {
+        "sang": {
+          "shift_name": "Ca Sáng (06:00 - 11:30)",
+          "phases": {
+            "open": {
+              "phase_name": "Đầu Ca (Mở Quán)",
+              "time_window": "Trước ca 15-20 phút (05:45 - 06:00)",
+              "tasks": [
+                {
+                  "id": "pvin_s_01",
+                  "task": "Kiểm tra và bật hệ thống đèn, quạt, máy lạnh."
+                },
+                {
+                  "id": "pvin_s_02",
+                  "task": "Pha trà lớn, chuẩn bị bình nước trà đá cho khách."
+                },
+                {
+                  "id": "pvin_s_03",
+                  "task": "Quét nhà, lau nhà và kiểm tra dọn dẹp nhà vệ sinh."
+                },
+                {
+                  "id": "pvin_s_04",
+                  "task": "Xếp ly, chuẩn bị sẵn ly nhựa và ống hút để sẵn tại quầy phục vụ."
+                }
+              ]
+            },
+            "running": {
+              "phase_name": "Trong Ca (Vận Hành)",
+              "time_window": "06:00 - 11:00",
+              "tasks": [
+                {
+                  "id": "pvin_s_05",
+                  "task": "Đón khách, mời trà đá và Order cho khách sảnh trong."
+                },
+                {
+                  "id": "pvin_s_06",
+                  "task": "Bưng nước đúng số bàn, đúng món theo bill."
+                },
+                {
+                  "id": "pvin_s_07",
+                  "task": "Châm trà đá định kỳ và thu dọn ly rỗng khi khách dùng xong."
+                },
+                {
+                  "id": "pvin_s_08",
+                  "task": "Dọn bàn, quét sơ chỗ khách ngồi và xếp bàn ghế lại đúng vị trí."
+                },
+                {
+                  "id": "pvin_s_09",
+                  "task": "Thường xuyên kiểm tra nhà vệ sinh để xử lý kịp thời."
+                },
+                {
+                  "id": "pvin_s_10",
+                  "task": "Rửa ly cuốn chiếu, úp ly ráo nước tại bồn rửa."
+                }
+              ]
+            },
+            "close": {
+              "phase_name": "Cuối Ca (Đóng Ca Sáng)",
+              "time_window": "11:00 - 11:30",
+              "tasks": [
+                {
+                  "id": "pvin_s_11",
+                  "task": "Tổng dọn sơ sảnh: quét sàn, lau bàn, giặt khăn lau bàn sạch sẽ."
+                },
+                {
+                  "id": "pvin_s_12",
+                  "task": "Rửa toàn bộ ly tồn và úp lên kệ gọn gàng."
+                },
+                {
+                  "id": "pvin_s_13",
+                  "task": "Đổ rác và lồng bao rác mới cho các thùng rác."
+                },
+                {
+                  "id": "pvin_s_14",
+                  "task": "Pha sẵn bình trà lớn chuẩn bị cho ca chiều bán."
+                },
+                {
+                  "id": "pvin_s_15",
+                  "task": "Tắt bớt đèn/thiết bị điện không dùng rồi check-out."
+                }
+              ]
+            }
+          }
+        },
+        "toi": {
+          "shift_name": "Ca Tối (17:00 - 22:30)",
+          "phases": {
+            "open": {
+              "phase_name": "Đầu Ca (Đón Khách Tối)",
+              "time_window": "Trước ca 15 phút (16:45 - 17:00)",
+              "tasks": [
+                {
+                  "id": "pvin_t_01",
+                  "task": "Dọn dẹp ly nước tồn ca chiều, lau bàn ghế, quét nhà lau nhà và rửa sạch ly dồn."
+                },
+                {
+                  "id": "pvin_t_02",
+                  "task": "Kiểm tra dọn lại nhà vệ sinh sạch sẽ khô ráo để bắt đầu đón khách tối."
+                },
+                {
+                  "id": "pvin_t_03",
+                  "task": "Chuẩn bị bình trà đá đầy, ống hút và ly nhựa sẵn tại quầy tiếp ứng."
+                },
+                {
+                  "id": "pvin_t_04",
+                  "task": "Định kỳ tuần: Lau kính hoặc lau cánh quạt/thiết bị sảnh (theo chỉ đạo của Quản lý)."
+                }
+              ]
+            },
+            "running": {
+              "phase_name": "Trong Ca (Vận Hành & Rửa Cuốn Chiếu)",
+              "time_window": "17:00 - 21:30",
+              "tasks": [
+                {
+                  "id": "pvin_t_05",
+                  "task": "Phục vụ khách, bưng trà, order nước, châm trà định kỳ, hỗ trợ tính tiền tại bàn."
+                },
+                {
+                  "id": "pvin_t_06",
+                  "task": "Dọn bàn, quét sơ chỗ khách ngồi, xếp bàn ghế lại ngay ngắn đúng vị trí."
+                },
+                {
+                  "id": "pvin_t_07",
+                  "task": "Thường xuyên kiểm tra nhà vệ sinh xem có dơ hay không để xử lý ngay."
+                },
+                {
+                  "id": "pvin_t_08",
+                  "task": "Rửa ly cuốn chiếu: Bưng nước chăm khách xong tranh thủ rửa ngay, KHÔNG để dồn đến cuối giờ."
+                },
+                {
+                  "id": "pvin_t_09",
+                  "task": "Kỹ năng quan sát: Vừa rửa ly vừa canh mắt nhìn sảnh khi khách gọi hoặc yêu cầu."
+                },
+                {
+                  "id": "pvin_t_10",
+                  "task": "Hỗ trợ chéo: Nếu bên trong ít khách hơn ngoài sân, chủ động theo dõi hỗ trợ bạn ca ngoài (order, bưng nước, dọn bàn)."
+                }
+              ]
+            },
+            "close": {
+              "phase_name": "Cuối Ca (Tổng Dọn Sạch & Khô Ráo)",
+              "time_window": "21:30 - 22:30",
+              "tasks": [
+                {
+                  "id": "pvin_t_11",
+                  "task": "Tổng dọn vệ sinh sảnh: quét sàn, lau nhà, lau dọn bàn ghế đưa về vị trí ban đầu."
+                },
+                {
+                  "id": "pvin_t_12",
+                  "task": "Tập trung rửa sạch toàn bộ ly tồn, dụng cụ quầy, ca trà, bình trà ủ và giặt khăn sạch."
+                },
+                {
+                  "id": "pvin_t_13",
+                  "task": "Tiêu chuẩn bồn rửa: Lau khô hoàn toàn bồn rửa ly và hút/đổ cạn nước ra khỏi bệ phơi ly (tránh ẩm mốc)."
+                },
+                {
+                  "id": "pvin_t_14",
+                  "task": "Chờ bạn ca ngoài dọn sân vào hỗ trợ các khâu cuối, cùng nhau hoàn tất rồi CÙNG CHECK-OUT."
+                }
+              ]
+            }
+          }
+        }
+      },
+      "phases": {
+        "open": {
+          "phase_name": "Đầu Ca (Mở Quán)",
+          "time_window": "Trước ca 15-20 phút",
+          "tasks": [
+            {
+              "id": "pvin_01",
+              "task": "Kiểm tra và bật hệ thống đèn, quạt, máy lạnh."
+            },
+            {
+              "id": "pvin_02",
+              "task": "Pha trà, chuẩn bị nước trà đá cho khách."
+            },
+            {
+              "id": "pvin_03",
+              "task": "Quét nhà, lau nhà và kiểm tra nhà vệ sinh."
+            },
+            {
+              "id": "pvin_04",
+              "task": "Xếp ly, chuẩn bị sẵn ly nhựa và ống hút để sẵn tại quầy."
+            }
+          ]
+        },
+        "running": {
+          "phase_name": "Trong Ca (Vận Hành)",
+          "time_window": "Xuyên suốt ca",
+          "tasks": [
+            {
+              "id": "pvin_05",
+              "task": "Đón khách, mời trà đá và Order cho khách hàng."
+            },
+            {
+              "id": "pvin_06",
+              "task": "Bưng nước ra đúng số bàn, đúng món theo bill."
+            },
+            {
+              "id": "pvin_07",
+              "task": "Châm trà đá định kỳ và thu dọn ly rỗng khi khách dùng xong."
+            },
+            {
+              "id": "pvin_08",
+              "task": "Dọn bàn, quét sơ chỗ khách ngồi và xếp bàn ghế lại đúng vị trí ngay sau khi khách rời đi."
+            },
+            {
+              "id": "pvin_09",
+              "task": "Thường xuyên kiểm tra nhà vệ sinh xem có dơ hay không để xử lý kịp thời."
+            },
+            {
+              "id": "pvin_10",
+              "task": "Rửa ly cuốn chiếu, không để dồn đến cuối giờ."
+            }
+          ]
+        },
+        "close": {
+          "phase_name": "Cuối Ca (Đóng Quán)",
+          "time_window": "Sau khi hết ca",
+          "tasks": [
+            {
+              "id": "pvin_11",
+              "task": "Cuối ca tổng dọn sơ quán: quét nhà, lau sàn, lau bàn, giặt khăn lau bàn."
+            },
+            {
+              "id": "pvin_12",
+              "task": "Rửa toàn bộ ly tồn và úp ly lên kệ gọn gàng."
+            },
+            {
+              "id": "pvin_13",
+              "task": "Đổ rác và chuẩn bị bì rác mới cho các thùng rác."
+            },
+            {
+              "id": "pvin_14",
+              "task": "Lau khô bồn rửa ly và hút hết nước ra khỏi bệ phơi ly."
+            },
+            {
+              "id": "pvin_15",
+              "task": "Kiểm tra kỹ còn sót gì không, hỗ trợ nhau dọn dẹp rồi cùng check-out."
+            }
+          ]
+        }
+      }
+    },
+    "phuc_vu_san_vuon": {
+      "role_id": "phuc_vu_san_vuon",
+      "role_name": "Phục Vụ Bên Ngoài",
+      "department": "Khối Phục Vụ",
+      "shifts": {
+        "sang": {
+          "shift_name": "Ca Sáng (06:00 - 11:30)",
+          "phases": {
+            "open": {
+              "phase_name": "Đầu Ca (Mở Quán)",
+              "time_window": "05:45 - 06:00",
+              "tasks": [
+                {
+                  "id": "pvout_s_01",
+                  "task": "Mở dù che ngoài sân (nếu không có gió lớn)."
+                },
+                {
+                  "id": "pvout_s_02",
+                  "task": "Bưng kê bàn ghế ngoài sân theo đúng sơ đồ vị trí chỉ định."
+                },
+                {
+                  "id": "pvout_s_03",
+                  "task": "Đặt 3 quạt ngoài sân đúng vị trí chỉ định và cắm điện sẵn sàng."
+                },
+                {
+                  "id": "pvout_s_04",
+                  "task": "Quét sơ lại sân ngoài sạch sẽ trước giờ đón khách."
+                },
+                {
+                  "id": "pvout_s_05",
+                  "task": "Lấy bàn để trà và khay ly từ bên trong ra đặt tại điểm tiếp ứng sân."
+                }
+              ]
+            },
+            "running": {
+              "phase_name": "Trong Ca (Vận Hành & Xe Khách)",
+              "time_window": "06:00 - 10:00",
+              "tasks": [
+                {
+                  "id": "pvout_s_06",
+                  "task": "Đón khách, dắt xe và xếp xe khách ngay ngắn đúng nơi quy định."
+                },
+                {
+                  "id": "pvout_s_07",
+                  "task": "Mời trà đá và Order cho khách ngồi khu vực ngoài sân."
+                },
+                {
+                  "id": "pvout_s_08",
+                  "task": "Châm trà định kỳ, dọn tàn thuốc, lau sạch bàn ghế ngay sau khi khách rời đi."
+                },
+                {
+                  "id": "pvout_s_09",
+                  "task": "Quan sát an ninh khu vực xe máy của khách ngoài sân."
+                },
+                {
+                  "id": "pvout_s_10",
+                  "task": "Chủ động hạ dù và dời quạt khi thời tiết chuyển gió lớn hoặc mưa bất chợt."
+                }
+              ]
+            },
+            "close": {
+              "phase_name": "Cuối Ca (Thu Gọn Tránh Nắng Trưa)",
+              "time_window": "09:30 - 11:30",
+              "tasks": [
+                {
+                  "id": "pvout_s_11",
+                  "task": "Khung 09:30 - 10:00 thu gọn bàn ghế ngoài sân lại một chỗ (chừa bàn khách còn ngồi)."
+                },
+                {
+                  "id": "pvout_s_12",
+                  "task": "Quét lại sân cho sạch sẽ, thu dù lại vị trí cũ gọn gàng."
+                },
+                {
+                  "id": "pvout_s_13",
+                  "task": "Lau sạch chỗ để ghế trong nhà, bưng bàn ghế vào nhà cất gọn gàng."
+                },
+                {
+                  "id": "pvout_s_14",
+                  "task": "Vào nhà phụ sảnh trong dọn dẹp, rửa ly rồi check-out."
+                }
+              ]
+            }
+          }
+        },
+        "toi": {
+          "shift_name": "Ca Tối (17:00 - 22:30)",
+          "phases": {
+            "open": {
+              "phase_name": "Đầu Ca (Bày Bàn Ghế Tối)",
+              "time_window": "16:45 - 17:00",
+              "tasks": [
+                {
+                  "id": "pvout_t_01",
+                  "task": "Bưng bàn ghế ngoài sân bày ra đúng sơ đồ nơi đã được hướng dẫn."
+                },
+                {
+                  "id": "pvout_t_02",
+                  "task": "Chuẩn bị bàn trà đá tiếp ứng và ly phục vụ khách bên ngoài."
+                },
+                {
+                  "id": "pvout_t_03",
+                  "task": "Cắm điện kiểm tra các quạt ngoài sân và đèn chiếu sáng sân vườn."
+                }
+              ]
+            },
+            "running": {
+              "phase_name": "Trong Ca (Phục Vụ & Dắt Xe Khách)",
+              "time_window": "17:00 - 21:00",
+              "tasks": [
+                {
+                  "id": "pvout_t_04",
+                  "task": "Phục vụ khách, bưng trà, order nước, châm trà, tính tiền tại bàn."
+                },
+                {
+                  "id": "pvout_t_05",
+                  "task": "Dọn bàn, quét sơ chỗ khách ngồi, xếp bàn ghế lại đúng vị trí."
+                },
+                {
+                  "id": "pvout_t_06",
+                  "task": "Luôn chú ý xe khách để đúng quy định; chủ động hỗ trợ dắt xe cho khách khi về."
+                },
+                {
+                  "id": "pvout_t_07",
+                  "task": "Hỗ trợ chéo: Nếu bên ngoài ít khách hơn bên trong, chủ động theo dõi hỗ trợ bạn ca trong (order, bưng nước, dọn bàn)."
+                }
+              ]
+            },
+            "close": {
+              "phase_name": "Cuối Ca (Gom Sân 21h & Phụ Dọn Trong Nhà)",
+              "time_window": "21:00 - 22:30",
+              "tasks": [
+                {
+                  "id": "pvout_t_08",
+                  "task": "Khung 21:00 - 21:30: Gom ghế và bàn ngoài sân lại một chỗ, quét sạch chỗ khách đã về (chừa bàn khách còn ngồi)."
+                },
+                {
+                  "id": "pvout_t_09",
+                  "task": "Lau sạch vị trí cất bàn ghế trong nhà; chủ động bưng ghế vào cất sớm nếu trong nhà vãn khách."
+                },
+                {
+                  "id": "pvout_t_10",
+                  "task": "Khi khách về hết: Thu toàn bộ bàn ghế vào trong nhà, tập trung quét sạch toàn bộ sân."
+                },
+                {
+                  "id": "pvout_t_11",
+                  "task": "Kiểm tra kỹ lại toàn bộ sân ngoài lần cuối trước khi vào trong."
+                },
+                {
+                  "id": "pvout_t_12",
+                  "task": "Vì bên ngoài dọn xong sớm hơn -> BẮT BUỘC vào hỗ trợ bên trong: Chà rửa tổng nhà vệ sinh, quét lau nhà, phụ rửa ly chén."
+                },
+                {
+                  "id": "pvout_t_13",
+                  "task": "Văn hóa cùng Check-out: Hỗ trợ nhau làm sạch toàn bộ quán rồi cùng bấm Check-out về (không người về sớm người về trễ)."
+                }
+              ]
+            }
+          }
+        }
+      },
+      "phases": {
+        "open": {
+          "phase_name": "Đầu Ca (Mở Quán)",
+          "time_window": "Trước ca 15-20 phút",
+          "tasks": [
+            {
+              "id": "pvout_01",
+              "task": "Mở dù che nếu không có gió đối với buổi sáng."
+            },
+            {
+              "id": "pvout_02",
+              "task": "Bưng bàn ghế và sắp xếp cho khu vực ngoài sân theo vị trí chỉ định."
+            },
+            {
+              "id": "pvout_03",
+              "task": "Bên ngoài 3 quạt để theo đúng vị trí chỉ định và cắm điện sẵn sàng."
+            },
+            {
+              "id": "pvout_04",
+              "task": "Quét sơ lại sân nếu dơ."
+            },
+            {
+              "id": "pvout_05",
+              "task": "Lấy bàn để trà và khay ly từ bên trong ra đặt tại điểm tiếp ứng ngoài sân."
+            }
+          ]
+        },
+        "running": {
+          "phase_name": "Trong Ca (Vận Hành)",
+          "time_window": "Xuyên suốt ca",
+          "tasks": [
+            {
+              "id": "pvout_06",
+              "task": "Đón khách, dắt xe cho khách và để xe khách đúng nơi quy định."
+            },
+            {
+              "id": "pvout_07",
+              "task": "Mời trà đá và Order cho khách ngồi khu vực ngoài sân."
+            },
+            {
+              "id": "pvout_08",
+              "task": "Châm trà đá định kỳ, dọn tàn thuốc/rác, lau sạch bàn ghế ngay sau khi khách rời đi."
+            },
+            {
+              "id": "pvout_09",
+              "task": "Quan sát khu vực xe máy của khách ngoài sân để đảm bảo an ninh."
+            },
+            {
+              "id": "pvout_10",
+              "task": "Chủ động hạ dù và dời quạt khi thời tiết chuyển gió lớn hoặc mưa bất chợt."
+            }
+          ]
+        },
+        "close": {
+          "phase_name": "Cuối Ca (Đóng Quán)",
+          "time_window": "Sau khi hết ca",
+          "tasks": [
+            {
+              "id": "pvout_11",
+              "task": "Tầm 21:00 - 21:30 thu bàn ghế ngoài sân lại một chỗ (nếu còn khách ngồi thì chừa ra)."
+            },
+            {
+              "id": "pvout_12",
+              "task": "Quét lại sân cho sạch sẽ, thu dù lại vị trí cũ."
+            },
+            {
+              "id": "pvout_13",
+              "task": "Vào nhà lau sạch chỗ để ghế, bưng bàn ghế vào nhà cất gọn gàng."
+            },
+            {
+              "id": "pvout_14",
+              "task": "Kiểm tra kỹ lại toàn bộ sân ngoài."
+            },
+            {
+              "id": "pvout_15",
+              "task": "Chà rửa tổng nhà vệ sinh cho thật sạch sẽ và khô ráo (Nhiệm vụ chốt cho nhân sự Bên ngoài)."
+            },
+            {
+              "id": "pvout_16",
+              "task": "Vào trong nhà phụ quét dọn, rửa ly chén rồi cùng nhau check-out."
+            }
+          ]
+        }
+      }
+    },
+    "thu_ngan": {
+      "role_id": "thu_ngan",
+      "role_name": "Thu Ngân (Cashier)",
+      "department": "Kế Toán & Thu Ngân",
+      "phases": {
+        "open": {
+          "phase_name": "Đầu Ca (Mở Quán)",
+          "time_window": "Trước ca 15 phút",
+          "tasks": [
+            {
+              "id": "tn_01",
+              "task": "Khởi động máy POS, máy in hóa đơn, kiểm tra cuộn giấy in bill còn đủ dùng không."
+            },
+            {
+              "id": "tn_02",
+              "task": "Đếm tiền lẻ đầu ca (tiền thối) và ký xác nhận số dư tiền mặt bàn giao với Trưởng ca."
+            },
+            {
+              "id": "tn_03",
+              "task": "Kiểm tra mã QR ngân hàng hiển thị rõ nét, đảm bảo kết nối mạng thanh toán ổn định."
+            },
+            {
+              "id": "tn_04",
+              "task": "Cập nhật danh sách các món tạm ngưng (hết nguyên liệu) từ Barista vào phần mềm POS."
+            }
+          ]
+        },
+        "running": {
+          "phase_name": "Trong Ca (Vận Hành)",
+          "time_window": "Xuyên suốt ca",
+          "tasks": [
+            {
+              "id": "tn_05",
+              "task": "Nhập đúng số bàn, đúng món và các ghi chú đặc biệt của khách (ít đường, không đá, nóng...)."
+            },
+            {
+              "id": "tn_06",
+              "task": "Nhắc lại tên món và tổng số tiền thanh toán với khách trước khi bấm xuất hóa đơn."
+            },
+            {
+              "id": "tn_07",
+              "task": "Xác nhận biến động số dư tài khoản trên màn hình trước khi thông báo thanh toán thành công."
+            },
+            {
+              "id": "tn_08",
+              "task": "Chuyển phiếu order vào quầy bar ngay tức thì để Barista kịp pha chế."
+            }
+          ]
+        },
+        "close": {
+          "phase_name": "Cuối Ca (Đóng Quán)",
+          "time_window": "Sau khi hết ca",
+          "tasks": [
+            {
+              "id": "tn_09",
+              "task": "In phiếu chốt ca (Z-report / Báo cáo doanh thu ca) từ phần mềm POS."
+            },
+            {
+              "id": "tn_10",
+              "task": "Đếm tiền mặt thực tế trong két, đối chiếu khớp chính xác với tiền mặt trên báo cáo POS."
+            },
+            {
+              "id": "tn_11",
+              "task": "Đối chiếu tổng số tiền chuyển khoản ngân hàng với sao kê/thông báo app ngân hàng."
+            },
+            {
+              "id": "tn_12",
+              "task": "Lập biên bản kết ca, niêm phong tiền mặt bàn giao cho Trưởng ca/Chủ quán, tắt máy in và POS."
+            }
+          ]
+        }
+      }
+    },
+    "truong_ca": {
+      "role_id": "truong_ca",
+      "role_name": "Trưởng Ca / Quản Lý (Shift Leader)",
+      "department": "Ban Quản Lý",
+      "phases": {
+        "open": {
+          "phase_name": "Đầu Ca (Mở Quán)",
+          "time_window": "Trước ca 20 phút",
+          "tasks": [
+            {
+              "id": "tc_01",
+              "task": "Kiểm tra danh sách nhân sự đi làm trên web FnBOps, xác nhận đủ quân số mở ca."
+            },
+            {
+              "id": "tc_02",
+              "task": "Kiểm tra tác phong, đồng phục, bảng tên và sự chuẩn bị của toàn bộ nhân sự các vị trí."
+            },
+            {
+              "id": "tc_03",
+              "task": "Phổ biến mục tiêu ca, món đặc biệt đẩy bán (Upsell) và nhắc nhở an toàn vệ sinh."
+            },
+            {
+              "id": "tc_04",
+              "task": "Ký biên bản giao nhận tiền lẻ đầu ca cho Thu ngân."
+            }
+          ]
+        },
+        "running": {
+          "phase_name": "Trong Ca (Vận Hành)",
+          "time_window": "Xuyên suốt ca",
+          "tasks": [
+            {
+              "id": "tc_05",
+              "task": "Quan sát tổng thể chất lượng phục vụ, thời gian ra món của quầy Bar (chuẩn < 7 phút)."
+            },
+            {
+              "id": "tc_06",
+              "task": "Trực tiếp xử lý các tình huống khiếu nại, phản hồi của khách hàng với thái độ cầu thị."
+            },
+            {
+              "id": "tc_07",
+              "task": "Điều phối linh hoạt nhân sự giữa các khu vực khi xảy ra tình trạng dồn khách bất ngờ."
+            },
+            {
+              "id": "tc_08",
+              "task": "Kiểm tra định kỳ vệ sinh khu vực Restroom (nhà vệ sinh) mỗi 60 phút/lần."
+            }
+          ]
+        },
+        "close": {
+          "phase_name": "Cuối Ca (Đóng Quán)",
+          "time_window": "Sau khi hết ca",
+          "tasks": [
+            {
+              "id": "tc_09",
+              "task": "Kiểm tra việc thực hiện checklist cuối ca của tất cả các vị trí (Bar, Phục vụ, Sân vườn, Thu ngân)."
+            },
+            {
+              "id": "tc_10",
+              "task": "Kiểm tra và ký duyệt biên bản chốt doanh thu ca cùng Thu ngân, niêm phong két tiền."
+            },
+            {
+              "id": "tc_11",
+              "task": "Rà soát trạng thái check-out của nhân viên trên web, duyệt các trường hợp quên check-out hợp lệ."
+            },
+            {
+              "id": "tc_12",
+              "task": "Kiểm tra an toàn phòng cháy, ngắt cầu dao tổng, khóa cổng và kích hoạt camera an ninh."
+            }
+          ]
+        }
+      }
+    }
+  }
+}

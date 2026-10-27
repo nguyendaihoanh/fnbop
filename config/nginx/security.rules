@@ -1,0 +1,29 @@
+# Block access to hidden files (except .well-known)
+location ~ /\.(?!well-known) {
+    deny all;
+    return 404;
+}
+
+# Block access to sensitive files, scripts, databases, diagrams, archives (exact extensions)
+location ~* \.(env|git|htaccess|conf|pickle|py|sh|sql|db|sqlite|log|md|yml|yaml|drawio|zip|tar|gz|7z|rar|bz2|xz)$ {
+    deny all;
+    return 404;
+}
+
+# Block access to backup files (even with timestamps like .bak_20260828)
+location ~* (\.bak.*|\.old.*|\.orig.*|\.save.*|~)$ {
+    deny all;
+    return 404;
+}
+
+# Explicitly block sensitive json credentials, staff data, workflows, and architecture files
+location ~* /(data|staff_auth|store_config|shift_approvals|eval_logs|pos_heartbeat|service-account|credentials|secret|config|.*workflow.*|.*intelligence.*|.*architecture.*)\.json$ {
+    deny all;
+    return 404;
+}
+
+# Block access to architecture blueprints and system info docs
+location ~* (blueprint|architecture|infrastructure|macmini|server_info|system_info).*\.(pdf|html|json|txt|png|svg)$ {
+    deny all;
+    return 404;
+}

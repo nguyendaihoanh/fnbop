@@ -1,0 +1,40 @@
+[
+  {
+    "id": "seed_2026-10-15_phache_morning",
+    "username": "phache",
+    "staff_name": "Pha Chế",
+    "display_name": "Pha Chế",
+    "date": "15/10/2026",
+    "shift_key": "morning",
+    "shift_name": "Ca Sáng",
+    "checkin_time": "2026-10-15 06:55:00",
+    "checkout_time": "2026-10-15 12:05:00",
+    "total_mins": 310,
+    "effective_duration_mins": 300,
+    "status": "ON_TIME",
+    "note": "Ca sáng pha chế quầy bar",
+    "created_at": "2026-10-15T06:55:00",
+    "hourly_rate_snapshot": 22000,
+    "scheduled_start": "07:00",
+    "scheduled_end": "12:00"
+  },
+  {
+    "id": "seed_2026-10-15_nhanvien_afternoon",
+    "username": "nhanvien",
+    "staff_name": "Nhân Viên",
+    "display_name": "Nhân Viên",
+    "date": "15/10/2026",
+    "shift_key": "afternoon",
+    "shift_name": "Ca Chiều",
+    "checkin_time": "2026-10-15 11:58:00",
+    "checkout_time": "2026-10-15 17:02:00",
+    "total_mins": 304,
+    "effective_duration_mins": 300,
+    "status": "ON_TIME",
+    "note": "Phục vụ sảnh chính",
+    "created_at": "2026-10-15T11:58:00",
+    "hourly_rate_snapshot": 18000,
+    "scheduled_start": "12:00",
+    "scheduled_end": "17:00"
+  }
+]

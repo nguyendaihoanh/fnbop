@@ -1,0 +1,64 @@
+# ==============================================================================
+# FNBOPS - 1-CLICK PRODUCTION DOCKER COMPOSE STACK
+# Caddy 2 (Edge SSL/Gateway) + FastAPI (Core Workforce OS) + SQLite WAL Mode
+# ==============================================================================
+
+services:
+  fnbops-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: fnbops-api
+    restart: unless-stopped
+    environment:
+      - ON_PREMISE_MODE=true
+      - PORT=8100
+      - HOST=0.0.0.0
+      - DATA_DIR=/data
+      - DATABASE_PATH=/data/fnbop.db
+      - DATA_FILE=/data/data.json
+      - AUTH_FILE=/data/staff_auth.json
+      - APPROVALS_FILE=/data/shift_approvals.json
+      - STORE_NAME=${STORE_NAME:-FnBOps Store Lounge}
+    volumes:
+      - fnbops_data:/data
+    ports:
+      - "127.0.0.1:8100:8100"
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8100/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    networks:
+      - fnbops-net
+
+  fnbops-gateway:
+    image: caddy:2.8.4-alpine
+    container_name: fnbops-gateway
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./frontend:/srv/frontend:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      fnbops-api:
+        condition: service_healthy
+    networks:
+      - fnbops-net
+
+volumes:
+  fnbops_data:
+    driver: local
+  caddy_data:
+    driver: local
+  caddy_config:
+    driver: local
+
+networks:
+  fnbops-net:
+    driver: bridge

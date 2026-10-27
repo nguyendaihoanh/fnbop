@@ -1,0 +1,416 @@
+{
+  "weeks": {
+    "2026-W44": {
+      "week_id": "2026-W44",
+      "start_date": "2026-10-26",
+      "end_date": "2026-11-01",
+      "status": "PUBLISHED",
+      "registrations": {},
+      "shifts": {
+        "2026-10-26": {
+          "morning": {
+            "time": "06:00 - 11:30",
+            "manager": "manager",
+            "barista": "phache",
+            "baristas": [
+              "phache"
+            ],
+            "service": [
+              "nhanvien"
+            ],
+            "missing_barista": false
+          },
+          "evening": {
+            "time": "17:00 - 23:00",
+            "manager": "manager",
+            "barista": "phache",
+            "baristas": [
+              "phache"
+            ],
+            "service_17": "nhanvien",
+            "service_18": null,
+            "service": [
+              "nhanvien"
+            ],
+            "missing_barista": false
+          }
+        },
+        "2026-10-27": {
+          "morning": {
+            "time": "06:00 - 11:30",
+            "manager": "admin",
+            "barista": "phache",
+            "baristas": [
+              "phache"
+            ],
+            "service": [
+              "nhanvien"
+            ],
+            "missing_barista": false
+          },
+          "evening": {
+            "time": "17:00 - 23:00",
+            "manager": "manager",
+            "barista": "phache",
+            "baristas": [
+              "phache"
+            ],
+            "service_17": "nhanvien",
+            "service_18": null,
+            "service": [
+              "nhanvien"
+            ],
+            "missing_barista": false
+          }
+        },
+        "2026-10-28": {
+          "morning": {
+            "time": "06:00 - 11:30",
+            "manager": "manager",
+            "barista": "phache",
+            "baristas": [
+              "phache"
+            ],
+            "service": [
+              "nhanvien"
+            ],
+            "missing_barista": false
+          },
+          "evening": {
+            "time": "17:00 - 23:00",
+            "manager": "manager",
+            "barista": "phache",
+            "baristas": [
+              "phache"
+            ],
+            "service_17": "nhanvien",
+            "service_18": null,
+            "service": [
+              "nhanvien"
+            ],
+            "missing_barista": false
+          }
+        },
+        "2026-10-29": {
+          "morning": {
+            "time": "06:00 - 11:30",
+            "manager": "admin",
+            "barista": "phache",
+            "baristas": [
+              "phache"
+            ],
+            "service": [
+              "nhanvien"
+            ],
+            "missing_barista": false
+          },
+          "evening": {
+            "time": "17:00 - 23:00",
+            "manager": "manager",
+            "barista": "phache",
+            "baristas": [
+              "phache"
+            ],
+            "service_17": "nhanvien",
+            "service_18": null,
+            "service": [
+              "nhanvien"
+            ],
+            "missing_barista": false
+          }
+        },
+        "2026-10-30": {
+          "morning": {
+            "time": "06:00 - 11:30",
+            "manager": "manager",
+            "barista": "phache",
+            "baristas": [
+              "phache"
+            ],
+            "service": [
+              "nhanvien"
+            ],
+            "missing_barista": false
+          },
+          "evening": {
+            "time": "17:00 - 23:00",
+            "manager": "manager",
+            "barista": "phache",
+            "baristas": [
+              "phache"
+            ],
+            "service_17": "nhanvien",
+            "service_18": null,
+            "service": [
+              "nhanvien"
+            ],
+            "missing_barista": false
+          }
+        },
+        "2026-10-31": {
+          "morning": {
+            "time": "06:00 - 11:30",
+            "manager": "admin",
+            "barista": "phache",
+            "baristas": [
+              "phache"
+            ],
+            "service": [
+              "nhanvien"
+            ],
+            "missing_barista": false
+          },
+          "evening": {
+            "time": "17:00 - 23:00",
+            "manager": "manager",
+            "barista": "phache",
+            "baristas": [
+              "phache"
+            ],
+            "service_17": "nhanvien",
+            "service_18": null,
+            "service": [
+              "nhanvien"
+            ],
+            "missing_barista": false
+          }
+        },
+        "2026-11-01": {
+          "morning": {
+            "time": "06:00 - 11:30",
+            "manager": "manager",
+            "barista": "phache",
+            "baristas": [
+              "phache"
+            ],
+            "service": [
+              "nhanvien"
+            ],
+            "missing_barista": false
+          },
+          "evening": {
+            "time": "17:00 - 23:00",
+            "manager": "manager",
+            "barista": "phache",
+            "baristas": [
+              "phache"
+            ],
+            "service_17": "nhanvien",
+            "service_18": null,
+            "service": [
+              "nhanvien"
+            ],
+            "missing_barista": false
+          }
+        }
+      },
+      "swaps": []
+    },
+    "2026-W45": {
+      "week_id": "2026-W45",
+      "start_date": "2026-11-02",
+      "end_date": "2026-11-08",
+      "status": "PUBLISHED",
+      "registrations": {},
+      "shifts": {
+        "2026-11-02": {
+          "morning": {
+            "time": "06:00 - 11:30",
+            "manager": "manager",
+            "barista": "phache",
+            "baristas": [
+              "phache"
+            ],
+            "service": [
+              "nhanvien"
+            ],
+            "missing_barista": false
+          },
+          "evening": {
+            "time": "17:00 - 23:00",
+            "manager": "manager",
+            "barista": "phache",
+            "baristas": [
+              "phache"
+            ],
+            "service_17": "nhanvien",
+            "service_18": null,
+            "service": [
+              "nhanvien"
+            ],
+            "missing_barista": false
+          }
+        },
+        "2026-11-03": {
+          "morning": {
+            "time": "06:00 - 11:30",
+            "manager": "admin",
+            "barista": "phache",
+            "baristas": [
+              "phache"
+            ],
+            "service": [
+              "nhanvien"
+            ],
+            "missing_barista": false
+          },
+          "evening": {
+            "time": "17:00 - 23:00",
+            "manager": "manager",
+            "barista": "phache",
+            "baristas": [
+              "phache"
+            ],
+            "service_17": "nhanvien",
+            "service_18": null,
+            "service": [
+              "nhanvien"
+            ],
+            "missing_barista": false
+          }
+        },
+        "2026-11-04": {
+          "morning": {
+            "time": "06:00 - 11:30",
+            "manager": "manager",
+            "barista": "phache",
+            "baristas": [
+              "phache"
+            ],
+            "service": [
+              "nhanvien"
+            ],
+            "missing_barista": false
+          },
+          "evening": {
+            "time": "17:00 - 23:00",
+            "manager": "manager",
+            "barista": "phache",
+            "baristas": [
+              "phache"
+            ],
+            "service_17": "nhanvien",
+            "service_18": null,
+            "service": [
+              "nhanvien"
+            ],
+            "missing_barista": false
+          }
+        },
+        "2026-11-05": {
+          "morning": {
+            "time": "06:00 - 11:30",
+            "manager": "admin",
+            "barista": "phache",
+            "baristas": [
+              "phache"
+            ],
+            "service": [
+              "nhanvien"
+            ],
+            "missing_barista": false
+          },
+          "evening": {
+            "time": "17:00 - 23:00",
+            "manager": "manager",
+            "barista": "phache",
+            "baristas": [
+              "phache"
+            ],
+            "service_17": "nhanvien",
+            "service_18": null,
+            "service": [
+              "nhanvien"
+            ],
+            "missing_barista": false
+          }
+        },
+        "2026-11-06": {
+          "morning": {
+            "time": "06:00 - 11:30",
+            "manager": "manager",
+            "barista": "phache",
+            "baristas": [
+              "phache"
+            ],
+            "service": [
+              "nhanvien"
+            ],
+            "missing_barista": false
+          },
+          "evening": {
+            "time": "17:00 - 23:00",
+            "manager": "manager",
+            "barista": "phache",
+            "baristas": [
+              "phache"
+            ],
+            "service_17": "nhanvien",
+            "service_18": null,
+            "service": [
+              "nhanvien"
+            ],
+            "missing_barista": false
+          }
+        },
+        "2026-11-07": {
+          "morning": {
+            "time": "06:00 - 11:30",
+            "manager": "admin",
+            "barista": "phache",
+            "baristas": [
+              "phache"
+            ],
+            "service": [
+              "nhanvien"
+            ],
+            "missing_barista": false
+          },
+          "evening": {
+            "time": "17:00 - 23:00",
+            "manager": "manager",
+            "barista": "phache",
+            "baristas": [
+              "phache"
+            ],
+            "service_17": "nhanvien",
+            "service_18": null,
+            "service": [
+              "nhanvien"
+            ],
+            "missing_barista": false
+          }
+        },
+        "2026-11-08": {
+          "morning": {
+            "time": "06:00 - 11:30",
+            "manager": "manager",
+            "barista": "phache",
+            "baristas": [
+              "phache"
+            ],
+            "service": [
+              "nhanvien"
+            ],
+            "missing_barista": false
+          },
+          "evening": {
+            "time": "17:00 - 23:00",
+            "manager": "manager",
+            "barista": "phache",
+            "baristas": [
+              "phache"
+            ],
+            "service_17": "nhanvien",
+            "service_18": null,
+            "service": [
+              "nhanvien"
+            ],
+            "missing_barista": false
+          }
+        }
+      },
+      "swaps": []
+    }
+  }
+}

@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="vi" data-theme="dark">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>FnBOps - Cẩm Nang Vận Hành & SOP</title>
+    <style>
+        :root {
+            --bg-base: #0a0c10;
+            --bg-surface: #12151e;
+            --bg-surface-hover: #181d2a;
+            --bg-card: #151924;
+            --border-subtle: rgba(255, 255, 255, 0.08);
+            --border-strong: rgba(255, 255, 255, 0.16);
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --accent-primary: #0d9488;
+            --accent-hover: #14b8a6;
+            --accent-glow: rgba(13, 148, 136, 0.15);
+            --code-bg: #1a1f2c;
+            --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+            --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        }
+
+        [data-theme="light"] {
+            --bg-base: #f8fafc;
+            --bg-surface: #ffffff;
+            --bg-surface-hover: #f1f5f9;
+            --bg-card: #ffffff;
+            --border-subtle: rgba(0, 0, 0, 0.08);
+            --border-strong: rgba(0, 0, 0, 0.16);
+            --text-primary: #0f172a;
+            --text-secondary: #475569;
+            --text-muted: #94a3b8;
+            --accent-primary: #0f766e;
+            --accent-hover: #0d9488;
+            --accent-glow: rgba(15, 118, 110, 0.1);
+            --code-bg: #f1f5f9;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: var(--font-sans);
+            background-color: var(--bg-base);
+            color: var(--text-primary);
+            line-height: 1.6;
+            display: flex;
+            min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* SIDEBAR */
+        #sidebar {
+            width: 320px;
+            background: var(--bg-surface);
+            border-right: 1px solid var(--border-subtle);
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            top: 0;
+            bottom: 0;
+            left: 0;
+            z-index: 50;
+            transition: transform 0.25s ease;
+        }
+
+        .sidebar-header {
+            padding: 24px 20px 16px;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .brand-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .brand-badge {
+            font-size: 0.7rem;
+            padding: 2px 8px;
+            background: var(--accent-glow);
+            color: var(--accent-primary);
+            border: 1px solid var(--accent-primary);
+            border-radius: 9999px;
+            font-weight: 600;
+        }
+
+        .search-box {
+            margin-top: 14px;
+            position: relative;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 8px 12px;
+            background: var(--bg-base);
+            border: 1px solid var(--border-subtle);
+            border-radius: 6px;
+            color: var(--text-primary);
+            font-size: 0.85rem;
+            outline: none;
+            transition: border-color 0.15s;
+        }
+
+        .search-input:focus {
+            border-color: var(--accent-primary);
+        }
+
+        .sidebar-nav {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px 12px;
+        }
+
+        .nav-category {
+            margin-bottom: 20px;
+        }
+
+        .category-title {
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--text-muted);
+            padding: 4px 10px 8px;
+        }
+
+        .category-links {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            padding: 9px 12px;
+            background: transparent;
+            border: none;
+            border-radius: 6px;
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            text-align: left;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .nav-item:hover {
+            background: var(--bg-surface-hover);
+            color: var(--text-primary);
+        }
+
+        .nav-item.active {
+            background: var(--accent-glow);
+            color: var(--accent-primary);
+            font-weight: 600;
+        }
+
+        .nav-badge {
+            font-size: 0.7rem;
+            padding: 1px 6px;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.06);
+            color: var(--text-muted);
+        }
+
+        .nav-item.active .nav-badge {
+            background: var(--accent-primary);
+            color: #ffffff;
+        }
+
+        .sidebar-footer {
+            padding: 14px 20px;
+            border-top: 1px solid var(--border-subtle);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 0.8rem;
+        }
+
+        .ext-link {
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: color 0.15s;
+        }
+
+        .ext-link:hover {
+            color: var(--accent-primary);
+        }
+
+        .theme-toggle-btn {
+            background: transparent;
+            border: 1px solid var(--border-subtle);
+            padding: 4px 10px;
+            border-radius: 4px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 0.75rem;
+        }
+
+        /* MAIN CONTENT */
+        #main {
+            margin-left: 320px;
+            flex: 1;
+            min-width: 0;
+            padding: 40px 60px 80px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .main-inner {
+            width: 100%;
+            max-width: 860px;
+        }
+
+        .mobile-header {
+            display: none;
+            position: sticky;
+            top: 0;
+            background: var(--bg-surface);
+            border-bottom: 1px solid var(--border-subtle);
+            padding: 14px 20px;
+            z-index: 40;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .doc-section {
+            display: none;
+        }
+
+        .doc-section.active {
+            display: block;
+            animation: fadeIn 0.15s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(4px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .doc-meta-bar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.82rem;
+            color: var(--text-muted);
+            margin-bottom: 24px;
+            padding-bottom: 14px;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .doc-category-tag {
+            font-weight: 600;
+            color: var(--accent-primary);
+        }
+
+        .doc-active-title {
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+
+        /* MARKDOWN BODY STYLES */
+        .markdown-body h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            margin-bottom: 20px;
+            color: var(--text-primary);
+            line-height: 1.25;
+        }
+
+        .markdown-body h2 {
+            font-size: 1.35rem;
+            font-weight: 600;
+            letter-spacing: -0.02em;
+            margin-top: 36px;
+            margin-bottom: 14px;
+            color: var(--text-primary);
+            border-bottom: 1px solid var(--border-subtle);
+            padding-bottom: 8px;
+        }
+
+        .markdown-body h3 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-top: 24px;
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+
+        .markdown-body p {
+            margin-bottom: 16px;
+            color: var(--text-secondary);
+            font-size: 0.96rem;
+            line-height: 1.7;
+        }
+
+        .markdown-body ul, .markdown-body ol {
+            margin-bottom: 18px;
+            padding-left: 24px;
+            color: var(--text-secondary);
+        }
+
+        .markdown-body li {
+            margin-bottom: 8px;
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+
+        .markdown-body strong {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        .markdown-body a {
+            color: var(--accent-primary);
+            text-decoration: none;
+            border-bottom: 1px dotted var(--accent-primary);
+        }
+
+        .markdown-body a:hover {
+            color: var(--accent-hover);
+        }
+
+        .markdown-body code {
+            background: var(--code-bg);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: var(--font-mono);
+            font-size: 0.88rem;
+            color: var(--accent-hover);
+            border: 1px solid var(--border-subtle);
+        }
+
+        .markdown-body pre {
+            background: var(--code-bg);
+            padding: 16px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin-bottom: 20px;
+            border: 1px solid var(--border-subtle);
+        }
+
+        .markdown-body pre code {
+            background: transparent;
+            padding: 0;
+            border: none;
+            color: var(--text-primary);
+            font-size: 0.88rem;
+        }
+
+        .markdown-body blockquote {
+            margin: 20px 0;
+            padding: 14px 18px;
+            border-left: 4px solid var(--accent-primary);
+            background: var(--bg-surface);
+            border-radius: 0 6px 6px 0;
+            color: var(--text-secondary);
+            font-size: 0.92rem;
+        }
+
+        .markdown-body table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 24px 0;
+            font-size: 0.92rem;
+        }
+
+        .markdown-body th, .markdown-body td {
+            padding: 10px 14px;
+            border: 1px solid var(--border-subtle);
+            text-align: left;
+        }
+
+        .markdown-body th {
+            background: var(--bg-surface);
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .markdown-body tr:nth-child(even) {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        /* RESPONSIVE */
+        @media (max-width: 900px) {
+            #sidebar {
+                transform: translateX(-100%);
+            }
+            #sidebar.open {
+                transform: translateX(0);
+            }
+            #main {
+                margin-left: 0;
+                padding: 24px 20px 60px;
+            }
+            .mobile-header {
+                display: flex;
+            }
+            .backdrop {
+                display: none;
+                position: fixed;
+                inset: 0;
+                background: rgba(0, 0, 0, 0.6);
+                z-index: 45;
+            }
+            .backdrop.open {
+                display: block;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="backdrop" class="backdrop" onclick="toggleSidebar()"></div>
+
+    <aside id="sidebar">
+        <div class="sidebar-header">
+            <div class="brand-title">
+                <span>FnBOps Store</span>
+                <span class="brand-badge">SOP v2.4</span>
+            </div>
+            <div class="search-box">
+                <input type="text" id="searchInput" class="search-input" placeholder="Tìm kiếm tài liệu SOP..." oninput="handleSearch(this.value)">
+            </div>
+        </div>
+
+        <nav class="sidebar-nav" id="sidebarNav">
+            <div class="nav-category"><div class="category-title">Cẩm Nang Chung</div><div class="category-links">
+        <button class="nav-item" data-id="tong-quan" onclick="switchDoc('tong-quan')">
+            <span class="nav-item-title">Tổng Quan Hệ Thống</span>
+            <span class="nav-badge">Chung</span>
+        </button>
+        </div></div><div class="nav-category"><div class="category-title">Nghiệp Vụ Nhân Sự</div><div class="category-links">
+        <button class="nav-item" data-id="cham-cong" onclick="switchDoc('cham-cong')">
+            <span class="nav-item-title">Quy Định Chấm Công & Đi Trễ</span>
+            <span class="nav-badge">Nhân sự</span>
+        </button>
+        
+        <button class="nav-item" data-id="duyet-ot" onclick="switchDoc('duyet-ot')">
+            <span class="nav-item-title">Quy Trình Duyệt Giờ & Tăng Ca (OT)</span>
+            <span class="nav-badge">Lương & OT</span>
+        </button>
+        </div></div><div class="nav-category"><div class="category-title">Vận Hành Quầy & Thu Ngân</div><div class="category-links">
+        <button class="nav-item" data-id="dong-ca" onclick="switchDoc('dong-ca')">
+            <span class="nav-item-title">Quy Trình Đóng Ca & Chốt Két</span>
+            <span class="nav-badge">Quầy bar</span>
+        </button>
+        
+        <button class="nav-item" data-id="su-co" onclick="switchDoc('su-co')">
+            <span class="nav-item-title">Xử Lý Sự Cố Kỹ Thuật & POS</span>
+            <span class="nav-badge">Kỹ thuật</span>
+        </button>
+        </div></div>
+        </nav>
+
+        <div class="sidebar-footer">
+            <a href="/index.html" class="ext-link">FnBOps Portal</a>
+            <button class="theme-toggle-btn" onclick="toggleTheme()">Theme: <span id="themeLabel">Dark</span></button>
+        </div>
+    </aside>
+
+    <div style="flex: 1; display: flex; flex-direction: column;">
+        <header class="mobile-header">
+            <button class="theme-toggle-btn" onclick="toggleSidebar()">Menu</button>
+            <span style="font-weight: 600; font-size: 0.95rem;">WFM SOP</span>
+            <button class="theme-toggle-btn" onclick="toggleTheme()">Theme</button>
+        </header>
+
+        <main id="main">
+            <div class="main-inner">
+                
+    <section id="doc-tong-quan" class="doc-section active">
+        <div class="doc-meta-bar">
+            <span class="doc-category-tag">Cẩm Nang Chung</span>
+            <span class="doc-divider">/</span>
+            <span class="doc-active-title">Tổng Quan Hệ Thống</span>
+        </div>
+        <article class="markdown-body">
+            <h1>Cẩm Nang Vận Hành WFM (SOP)</h1>
+<p>Chào mừng bạn đến với hệ thống tài liệu và cẩm nang vận hành chuẩn (SOP) của <strong>FnBOps WFM</strong>, được tích hợp trực tiếp cùng cổng quản trị nhân sự tự động <a href="/index.html">FnBOps Portal</a>.</p>
+<h2>1. Mục Đích &amp; Phạm Vi Áp Dụng</h2>
+<ul>
+<li><strong>Mục đích:</strong> Chuẩn hóa toàn bộ quy trình làm việc từ lúc nhân sự nhận ca, chấm công qua Wi-Fi geofence, xử lý công việc tại quầy cho đến khi kiểm két chốt ca.</li>
+<li><strong>Phạm vi:</strong> Áp dụng cho toàn bộ nhân sự bao gồm:</li>
+<li>Bộ phận Pha chế (Barista)</li>
+<li>Bộ phận Phục vụ (Service)</li>
+<li>Bộ phận Quản lý (Shift Leader / Manager)</li>
+<li>Bộ phận Giữ xe &amp; An ninh</li>
+</ul>
+<h2>2. Hệ Thống Công Cụ Vận Hành</h2>
+<ul>
+<li><strong>Cổng Quản Trị &amp; Chấm Công:</strong> <a href="/index.html">FnBOps Web Portal</a> (vận hành trực tiếp tại máy chủ nội bộ cửa hàng).</li>
+<li><strong>Trợ Lý Giám Sát Tự Động:</strong> WFM Assistant (thông báo cảnh báo treo ca, nhắc nhở đóng ca qua Telegram).</li>
+<li><strong>Hệ Thống POS Thu Ngân:</strong> Kết nối giám sát heartbeat tự động mỗi 60 giây.</li>
+</ul>
+<h2>3. Các Quy Trình Trọng Tâm</h2>
+<p>Vui lòng chọn mục tương ứng trên thanh điều hướng bên trái để xem chi tiết:<br />
+1. <strong><a href="#cham-cong" onclick="switchDoc('cham-cong'); return false;">Quy Định Chấm Công &amp; Đi Trễ</a>:</strong> Thời gian chuẩn vào ca, quy tắc tính trễ sau 10 phút và cách xử lý quên chấm công.<br />
+2. <strong><a href="#duyet-ot" onclick="switchDoc('duyet-ot'); return false;">Duyệt Giờ &amp; Tăng Ca (OT)</a>:</strong> Quy định ghi nhận ca OT, hệ số lương tăng ca và luồng phê duyệt của Quản lý.<br />
+3. <strong><a href="#dong-ca" onclick="switchDoc('dong-ca'); return false;">Đóng Ca &amp; Chốt Két Tiền Mặt</a>:</strong> Các bước bàn giao ca, đếm tiền mặt, đối soát chuyển khoản ngân hàng và chụp ảnh két.<br />
+4. <strong><a href="#su-co" onclick="switchDoc('su-co'); return false;">Xử Lý Sự Cố Kỹ Thuật</a>:</strong> Hướng dẫn xử lý khi mất mạng Wi-Fi cửa hàng, POS mất kết nối hoặc máy in kẹt giấy.</p>
+        </article>
+    </section>
+    
+    <section id="doc-cham-cong" class="doc-section ">
+        <div class="doc-meta-bar">
+            <span class="doc-category-tag">Nghiệp Vụ Nhân Sự</span>
+            <span class="doc-divider">/</span>
+            <span class="doc-active-title">Quy Định Chấm Công & Đi Trễ</span>
+        </div>
+        <article class="markdown-body">
+            <h1>SOP: Quy Định Chấm Công &amp; Đi Trễ</h1>
+<h2>1. Nguyên Tắc Chấm Công</h2>
+<ul>
+<li>Tất cả nhân viên phải kết nối đúng <strong>Wi-Fi nội bộ của quán</strong> tại cửa hàng trước khi mở ứng dụng <a href="/index.html">FnBOps Portal</a> để bấm <strong>VÀO CA (Check-in)</strong> hoặc <strong>RA CA (Check-out)</strong>.</li>
+<li>Hệ thống tự động xác thực địa chỉ IP/BSSID để đảm bảo chấm công đúng vị trí thực tế (Geofence Wi-Fi).</li>
+</ul>
+<h2>2. Quy Tắc Giờ Giấc &amp; Đi Trễ</h2>
+<ul>
+<li><strong>Quy định 10 phút đầu ca:</strong> Nhân viên vào trễ trong vòng 10 phút đầu ca được tính là trong giới hạn cho phép (Grace Period).</li>
+<li><strong>Vượt quá 10 phút:</strong> Bất kỳ lượt chấm công nào sau 10 phút kể từ giờ bắt đầu ca sẽ bị hệ thống tự động ghi nhận là <strong>Đi trễ</strong> và trừ thời gian công tương ứng theo block 15 phút.</li>
+<li><strong>Vào ca sớm:</strong> Nhân viên đến sớm có thể bấm vào ca trước tối đa 15 phút, nhưng giờ công chính thức tính từ đầu ca quy định trừ khi có chỉ đạo OT từ Quản lý.</li>
+</ul>
+<h2>3. Xử Lý Quên Chấm Công (Quên Check-in / Check-out)</h2>
+<p>Nếu quên bấm máy:<br />
+1. Thông báo ngay cho Quản lý ca trực hoặc Trợ lý WFM trong vòng <strong>2 tiếng</strong> kể từ khi phát hiện.<br />
+2. Quản lý kiểm tra camera hoặc đối soát nhật ký hóa đơn bán hàng tại POS.<br />
+3. Quản lý thực hiện bổ sung giờ công thủ công qua cổng Admin trên ứng dụng FnBOps trước 23:00 cùng ngày.</p>
+        </article>
+    </section>
+    
+    <section id="doc-duyet-ot" class="doc-section ">
+        <div class="doc-meta-bar">
+            <span class="doc-category-tag">Nghiệp Vụ Nhân Sự</span>
+            <span class="doc-divider">/</span>
+            <span class="doc-active-title">Quy Trình Duyệt Giờ & Tăng Ca (OT)</span>
+        </div>
+        <article class="markdown-body">
+            <h1>SOP: Quy Trình Duyệt Giờ Làm &amp; Tăng Ca (OT)</h1>
+<h2>1. Định Nghĩa Ca Tăng Ca (OT)</h2>
+<ul>
+<li>Thời gian làm thêm phát sinh khi cửa hàng quá tải khách, sự kiện đột xuất, hoặc thay ca cho đồng nghiệp vắng mặt.</li>
+<li>Mọi giờ làm thêm chỉ được tính là OT hợp lệ khi có <strong>sự phê duyệt trước hoặc xác nhận trong ca</strong> của Quản lý ca trực (Shift Leader).</li>
+</ul>
+<h2>2. Tiêu Chuẩn Tính Lương Tăng Ca</h2>
+<ul>
+<li><strong>OT ngày thường:</strong> Tính theo hệ số 1.0x hoặc 1.2x (tùy vị trí và thỏa thuận ca gãy).</li>
+<li><strong>OT ngày Lễ/Tết:</strong> Tính theo hệ số 2.0x - 3.0x theo quy chế vận hành chung của hệ thống.</li>
+<li>Hệ thống <strong>FnBOps</strong> tự động tính lũy kế quỹ lương OT hiển thị minh bạch tại màn hình Admin.</li>
+</ul>
+<h2>3. Luồng Phê Duyệt OT Trên Hệ Thống</h2>
+<ol>
+<li><strong>Ghi nhận:</strong> Khi ra ca muộn hơn giờ kết thúc ca chính thức trên 30 phút, hệ thống tự động gắn cờ <code>OT Pending</code>.</li>
+<li><strong>Kiểm tra:</strong> Quản lý đăng nhập vào cổng Quản Trị Chấm Công, kiểm tra lý do tăng ca thực tế.</li>
+<li><strong>Phê duyệt:</strong> Bấm nút <strong>Duyệt OT</strong> trước kỳ chốt lương tuần (Thứ Hai hàng tuần). Các giờ OT chưa duyệt sẽ được giữ ở trạng thái chờ đối soát.</li>
+</ol>
+        </article>
+    </section>
+    
+    <section id="doc-dong-ca" class="doc-section ">
+        <div class="doc-meta-bar">
+            <span class="doc-category-tag">Vận Hành Quầy & Thu Ngân</span>
+            <span class="doc-divider">/</span>
+            <span class="doc-active-title">Quy Trình Đóng Ca & Chốt Két</span>
+        </div>
+        <article class="markdown-body">
+            <h1>SOP: Quy Trình Đóng Ca &amp; Chốt Két Tiền Mặt</h1>
+<h2>1. Thời Điểm Thực Hiện</h2>
+<ul>
+<li>Áp dụng khi kết thúc ca sáng (chuyển giao ca chiều) và khi đóng cửa quán cuối ngày (sau 22:30).</li>
+</ul>
+<h2>2. Các Bước Đóng Ca Tiêu Chuẩn</h2>
+<ol>
+<li><strong>Khóa hóa đơn &amp; kiểm kê bill:</strong> Thu ngân in báo cáo ca (Z-Report) từ máy POS.</li>
+<li><strong>Kiểm đếm tiền mặt:</strong></li>
+<li>Phân loại tiền mặt theo từng mệnh giá (500k, 200k, 100k, 50k, 20k, 10k).</li>
+<li>Tách riêng tiền quỹ đầu ca (ví dụ: 1.000.000đ tiền thối mặc định).</li>
+<li>Tổng hợp số tiền mặt thu được trong ca.</li>
+<li><strong>Đối soát thanh toán số:</strong></li>
+<li>So sánh doanh thu chuyển khoản ngân hàng (VietQR) và thẻ so với dữ liệu trên máy POS.</li>
+<li><strong>Bàn giao / Nộp quỹ:</strong></li>
+<li>Nhập số liệu vào mục <strong>Chốt Ca &amp; Đóng Két</strong> trên ứng dụng <a href="/index.html">FnBOps Portal</a>.</li>
+<li>Chụp ảnh mặt két và ảnh báo cáo POS đính kèm gửi vào nhóm vận hành.</li>
+</ol>
+        </article>
+    </section>
+    
+    <section id="doc-su-co" class="doc-section ">
+        <div class="doc-meta-bar">
+            <span class="doc-category-tag">Vận Hành Quầy & Thu Ngân</span>
+            <span class="doc-divider">/</span>
+            <span class="doc-active-title">Xử Lý Sự Cố Kỹ Thuật & POS</span>
+        </div>
+        <article class="markdown-body">
+            <h1>SOP: Xử Lý Sự Cố Kỹ Thuật &amp; POS Heartbeat</h1>
+<h2>1. Mất Kết Nối Wi-Fi / Internet</h2>
+<ul>
+<li><strong>Hiện tượng:</strong> Không thể check-in trên webapp, máy POS báo offline.</li>
+<li><strong>Xử lý nhanh:</strong></li>
+<li>Kiểm tra nguồn modem Wi-Fi chính và Router phụ.</li>
+<li>Khởi động lại Router nếu đèn Internet nhấp nháy đỏ quá 2 phút.</li>
+<li>Trong thời gian chờ mạng, ghi nhận giờ vào ca thủ công vào sổ giao ca giấy.</li>
+</ul>
+<h2>2. Cảnh Báo Treo Ca / POS Mất Kết Nối Heartbeat</h2>
+<ul>
+<li><strong>Hiện tượng:</strong> Bot Telegram FnBOps bắn cảnh báo <code>POS Heartbeat Lost</code> hoặc <code>Ca chưa đóng sau 23:00</code>.</li>
+<li><strong>Xử lý nhanh:</strong></li>
+<li>Kiểm tra màn hình POS xem tiến trình <code>wfm_pos_heartbeat.ps1</code> có bị tắt không.</li>
+<li>Bật lại script heartbeat hoặc thông báo Quản lý kỹ thuật để khởi động lại dịch vụ từ xa.</li>
+</ul>
+<h2>3. Máy In Hóa Đơn Bị Kẹt / Hết Giấy</h2>
+<ul>
+<li>Mở nắp máy in, gạt chốt cắt giấy, kiểm tra cuộn giấy nhiệt K80 đúng chiều. Đóng chặt nắp đến khi nghe tiếng click.</li>
+</ul>
+        </article>
+    </section>
+    
+            </div>
+        </main>
+    </div>
+
+    <script>
+        function switchDoc(id) {
+            // Hide all
+            document.querySelectorAll('.doc-section').forEach(sec => sec.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(btn => btn.classList.remove('active'));
+
+            const targetSection = document.getElementById('doc-' + id);
+            const targetBtn = document.querySelector('.nav-item[data-id="' + id + '"]');
+
+            if (targetSection) {
+                targetSection.classList.add('active');
+                window.location.hash = '#' + id;
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+            if (targetBtn) {
+                targetBtn.classList.add('active');
+            }
+
+            // Close mobile sidebar if open
+            if (window.innerWidth <= 900) {
+                document.getElementById('sidebar').classList.remove('open');
+                document.getElementById('backdrop').classList.remove('open');
+            }
+        }
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const backdrop = document.getElementById('backdrop');
+            sidebar.classList.toggle('open');
+            backdrop.classList.toggle('open');
+        }
+
+        function toggleTheme() {
+            const current = document.documentElement.getAttribute('data-theme');
+            const next = current === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', next);
+            document.getElementById('themeLabel').innerText = next === 'dark' ? 'Dark' : 'Light';
+            localStorage.setItem('wfm_sop_theme', next);
+        }
+
+        function handleSearch(query) {
+            const q = query.trim().toLowerCase();
+            document.querySelectorAll('.nav-item').forEach(btn => {
+                const title = btn.querySelector('.nav-item-title').innerText.toLowerCase();
+                const id = btn.getAttribute('data-id');
+                const sec = document.getElementById('doc-' + id);
+                const content = sec ? sec.innerText.toLowerCase() : '';
+
+                if (!q || title.includes(q) || content.includes(q)) {
+                    btn.style.display = 'flex';
+                } else {
+                    btn.style.display = 'none';
+                }
+            });
+        }
+
+        // Init on load
+        window.addEventListener('DOMContentLoaded', () => {
+            const savedTheme = localStorage.getItem('wfm_sop_theme') || 'dark';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            document.getElementById('themeLabel').innerText = savedTheme === 'dark' ? 'Dark' : 'Light';
+
+            const hash = window.location.hash.replace('#', '');
+            if (hash && document.getElementById('doc-' + hash)) {
+                switchDoc(hash);
+            } else {
+                switchDoc('tong-quan');
+            }
+        });
+    </script>
+</body>
+</html>

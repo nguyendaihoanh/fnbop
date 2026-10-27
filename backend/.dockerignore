@@ -1,0 +1,12 @@
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.env*
+*.pickle
+token_sheets.pickle
+service-account.json
+staff_auth.json
+shift_approvals.json
+_backups
+backend.log

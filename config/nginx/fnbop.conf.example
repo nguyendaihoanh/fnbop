@@ -1,0 +1,156 @@
+server {
+    listen 80;
+    listen [::]:80;
+    server_name your-domain.com;
+    root /var/www/your-domain.com;
+    index index.html;
+
+    include /etc/nginx/conf.d/security.rules;
+
+    # Redirect deprecated v2.html to PWA root
+    location = /v2.html {
+        return 301 /;
+    }
+
+    # Allow PWA manifest.json explicitly before blocking general .json data files
+    location = /manifest.json {
+        default_type application/manifest+json;
+        add_header Cache-Control "public, max-age=3600" always;
+        try_files $uri =404;
+    }
+
+    # Audit Fix: Block access to all data, config, script, and database files
+    location ~* \.(json|lock|db|db-wal|db-shm|env|py|pyc|sql|bak|sh|pickle)$ {
+        deny all;
+        return 404;
+    }
+
+    # Audit Fix: Block access to all scratch, test and dev directories
+    location ^~ /scratch/ {
+        deny all;
+        return 404;
+    }
+
+    # N8N Webhooks - Internal Access Only
+    location ^~ /api/v1/n8n/ {
+        # Chi cho phep mang noi bo
+        allow 127.0.0.1;
+        allow 172.16.0.0/12; # Docker network
+        allow 192.168.0.0/16; # LAN
+        allow 10.0.0.0/8;
+        allow 100.0.0.0/8; # Tailscale
+        deny all; # Chan Internet
+        
+        proxy_pass http://host.docker.internal:8100;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # FastAPI Backend
+    location ^~ /api/v1/ {
+        proxy_pass http://host.docker.internal:8100;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location /api/send-payslip {
+        # Chặn truy cập từ Internet công khai, chỉ cho phép localhost và mạng nội bộ
+        allow 127.0.0.1;
+        allow 100.64.0.0/10;     # Tailscale network
+        allow 172.16.0.0/12;     # Docker network
+        deny all;
+
+        proxy_pass http://host.docker.internal:5678/webhook/fnb-send-payslip;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location /api/danh-gia {
+        allow 127.0.0.1;
+        allow 100.64.0.0/10;     # Tailscale network
+        allow 172.16.0.0/12;     # Docker network
+        deny all;
+
+        proxy_pass http://host.docker.internal:5678/webhook/danh-gia-nhan-vien;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location /api/ledger {
+        allow 127.0.0.1;
+        allow 100.64.0.0/10;
+        allow 172.16.0.0/12;
+        deny all;
+
+        proxy_pass http://host.docker.internal:5678/webhook/fnb-so-phu;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location ~* \.map$ {
+        deny all;
+        return 404;
+    }
+
+    # Serve minified/obfuscated bundles if available, fallback to raw source
+    location = /app.js {
+        try_files /dist/app.min.js $uri =404;
+        add_header Cache-Control "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0" always;
+        add_header Pragma "no-cache" always;
+        add_header Expires "0" always;
+    }
+
+    location = /mobile.js {
+        try_files /dist/mobile.bundle.js $uri =404;
+        add_header Cache-Control "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0" always;
+        add_header Pragma "no-cache" always;
+        add_header Expires "0" always;
+    }
+
+    # Code-splitting chunks from dist/chunks/
+    location ^~ /chunks/ {
+        alias /var/www/your-domain.com/dist/chunks/;
+        add_header Cache-Control "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0" always;
+        add_header Pragma "no-cache" always;
+        add_header Expires "0" always;
+        try_files $uri =404;
+    }
+
+    location ~* \.(html|js|css)$ {
+        add_header Cache-Control "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0" always;
+        add_header Pragma "no-cache" always;
+        add_header Expires "0" always;
+        try_files $uri =404;
+    }
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}
+
+# n8n Webhook Proxy (Legacy Port 8112 Absorption)
+server {
+    listen 8112;
+    server_name your-domain.com localhost 127.0.0.1 ;
+
+    location /sync {
+        allow 127.0.0.1;
+        allow 100.64.0.0/10;     # Tailscale network
+        allow 172.16.0.0/12;     # Docker network
+        deny all;
+
+        proxy_pass http://host.docker.internal:8100/api/v1/n8n/sync;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+}

@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# ==============================================================================
+# FnBOps Automated Pre-Push Quality Gate
+# Blocks `git push` if contracts, frontend bundles, or full test suite fail.
+# ==============================================================================
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+cd "$REPO_ROOT"
+
+VENV_PYTHON="$REPO_ROOT/.venv/bin/python"
+if [ ! -x "$VENV_PYTHON" ]; then
+    VENV_PYTHON="$(command -v python3 || command -v python)"
+fi
+
+echo "======================================================================"
+echo "[PRE-PUSH 1/3] Auditing SQLite Schema, OpenAPI Routes & Seed Hygiene..."
+echo "======================================================================"
+PYTHONPATH="$REPO_ROOT:$REPO_ROOT/backend" "$VENV_PYTHON" "$REPO_ROOT/scripts/audit_schema_contracts.py"
+
+echo "======================================================================"
+echo "[PRE-PUSH 2/3] Verifying Frontend Syntax, Production Bundle & JS Tests..."
+echo "======================================================================"
+if command -v node >/dev/null 2>&1; then
+    node -c "$REPO_ROOT/frontend/mobile.js"
+    node -c "$REPO_ROOT/frontend/app.js"
+    node "$REPO_ROOT/frontend/build.js" >/dev/null
+
+    if [ -n "$(git status --porcelain "$REPO_ROOT/frontend/dist/")" ]; then
+        echo "[BLOCKED] frontend/dist/ changed after running 'node frontend/build.js'!"
+        echo "          Please stage and commit updated frontend/dist/ artifacts before pushing."
+        git status --short "$REPO_ROOT/frontend/dist/"
+        exit 1
+    fi
+
+    for js_test in \
+        tests/test_css_hygiene.js \
+        tests/test_e2e_auth_gate.js \
+        tests/test_frontend_identity_matching.js \
+        tests/test_manager_safeguards_eval.js \
+        tests/test_press_hold_checkout.js \
+        tests/test_responsive_desktop_mode.js \
+        tests/test_roster_teammates_swap.js \
+        tests/test_thermal_receipt_and_swipe_gestures.js; do
+        node "$REPO_ROOT/$js_test" >/dev/null
+    done
+    echo "Frontend syntax, bundle sync & 8 JS unit suites passed."
+fi
+
+echo "======================================================================"
+echo "[PRE-PUSH 3/3] Running Full Sandboxed Pytest Suite..."
+echo "======================================================================"
+TESTING=1 \
+MOCK_TELEGRAM=1 \
+ON_PREMISE_MODE=true \
+JWT_SECRET_KEY="prepush_ephemeral_test_jwt_secret_key_32_characters_long" \
+POS_SECRET="prepush_ephemeral_test_pos_secret_key_32_characters_long" \
+PYTHONPATH="$REPO_ROOT:$REPO_ROOT/backend" \
+"$VENV_PYTHON" -m pytest "$REPO_ROOT/tests/" -q --ignore="$REPO_ROOT/tests/test_live_system_readiness.py"
+
+echo "======================================================================"
+echo "[PRE-PUSH PASS] All gates green — safe to push."
+echo "======================================================================"

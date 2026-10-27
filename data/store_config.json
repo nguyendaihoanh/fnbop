@@ -1,0 +1,139 @@
+{
+  "store_id": "default",
+  "store_name": "FnBOps Store Lounge",
+  "wifi_ssid": "FnBOps_Store_WiFi",
+  "timezone": "Asia/Ho_Chi_Minh",
+  "pos_mode": "pos365",
+  "notifications": {
+    "telegram": {
+      "enabled": true,
+      "bot_token": "",
+      "chat_id": ""
+    },
+    "zalo": {
+      "enabled": false,
+      "status": "disconnected",
+      "gateway_url": "http://127.0.0.1:8177"
+    }
+  },
+  "shifts": {
+    "sang": {
+      "key": "sang",
+      "name": "Ca Sáng",
+      "official_start": "06:00",
+      "official_end": "11:30",
+      "tolerance_limit": "06:10",
+      "min_checkout": "11:00",
+      "standard_mins": 330,
+      "roles": {
+        "manager": 1,
+        "barista": 1,
+        "service": 2
+      },
+      "weekday_roles": {
+        "manager": 1,
+        "barista": 1,
+        "service": 2
+      },
+      "weekend_roles": {
+        "manager": 1,
+        "barista": 2,
+        "service": 3
+      },
+      "window": {
+        "start": "05:55",
+        "end": "13:00"
+      }
+    },
+    "toi": {
+      "key": "toi",
+      "name": "Ca Tối",
+      "official_start": "17:00",
+      "official_end": "23:00",
+      "tolerance_limit": "17:10",
+      "min_checkout": "22:00",
+      "standard_mins": 360,
+      "roles": {
+        "manager": 1,
+        "barista": 0,
+        "service": 2
+      },
+      "weekday_roles": {
+        "manager": 1,
+        "barista": 0,
+        "service": 2
+      },
+      "weekend_roles": {
+        "manager": 1,
+        "barista": 1,
+        "service": 3
+      },
+      "staggered_service": [
+        {
+          "slot": "service_17",
+          "official_start": "17:00",
+          "official_end": "23:00",
+          "tolerance_limit": "17:10",
+          "standard_mins": 360
+        },
+        {
+          "slot": "service_18",
+          "official_start": "18:00",
+          "official_end": "23:00",
+          "tolerance_limit": "18:10",
+          "standard_mins": 300
+        }
+      ],
+      "window": {
+        "start": "16:30",
+        "end": "23:59"
+      }
+    }
+  },
+  "roster_rules": {
+    "registration_window": {
+      "open_iso_day": 1,
+      "close_iso_day": 7,
+      "close_time": "18:00"
+    },
+    "gender_constraints": {
+      "enabled": true,
+      "service_max_female": 1,
+      "service_min_male": 1
+    },
+    "shifts_per_week": {
+      "min": 3,
+      "max": 10,
+      "default_target": 5
+    },
+    "small_store_mode": false,
+    "enable_skill_bitmask": true,
+    "allow_solo_shift_coverage": true,
+    "relax_gender_constraints_on_deadlock": true
+  },
+  "holiday_rules": {
+    "holidays": [
+      "02/09"
+    ],
+    "rate_multiplier": 2.0
+  },
+  "auto_close_rules": {
+    "max_unclosed_hours": 24,
+    "daily_cutoff": "23:59"
+  },
+  "zalo_automation": {
+    "enable_auto_payslip": false,
+    "enable_auto_shift_reminder": false,
+    "enable_auto_checkout_alert": false,
+    "reminder_minutes_before_shift": 30,
+    "checkout_alert_grace_mins": 15
+  },
+  "version": 12,
+  "shift_valid_from": "2026-10-20T17:19:21.721991",
+  "shift_versions": [],
+  "payroll_rules": {
+    "deduction_cap_percent": 0.5,
+    "allow_negative_net": false,
+    "carry_forward_debt": true
+  }
+}
