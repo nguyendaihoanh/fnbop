@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FnBOps — Desktop Dashboard</title>
+    <link rel="icon" type="image/svg+xml" href="/icons/favicon.svg">
+    <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png">
+    <!-- Chart.js (Self-hosted Offline Vendor Bundle - MIT License) -->
+    <script src="vendor/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="style.css?v=20260923_phan_ca">
+</head>
+<body>
+    
+    <!-- Login Screen -->
+    <div id="loginOverlay" class="login-overlay">
+        <form id="desktopLoginForm" class="login-box" onsubmit="event.preventDefault(); document.getElementById('btnLogin').click();">
+            <div style="text-align: center; margin-bottom: 24px;">
+                <h2 style="font-size: 24px; font-weight: 600; color: var(--text-primary); margin: 0 0 8px 0;">F&B Executive</h2>
+                <div style="font-size: 13px; color: var(--text-secondary);">Restricted Access</div>
+            </div>
+            <div class="form-group">
+                <label for="loginUser">Tài khoản</label>
+                <input type="text" id="loginUser" name="username" class="form-control" autocomplete="username" placeholder="Tên đăng nhập">
+            </div>
+            <div class="form-group mt-2">
+                <label for="loginPass">Mật khẩu</label>
+                <input type="password" id="loginPass" name="password" class="form-control" autocomplete="current-password" placeholder="••••••••">
+            </div>
+            <button type="submit" id="btnLogin" class="btn-primary" style="width: 100%; margin-top: 24px; font-size: 15px;">Đăng Nhập</button>
+            <div style="margin-top: 16px; text-align: center; font-size: 11px; color: var(--text-secondary);">
+                <span data-i18n="legal.agpl_notice">Powered by FnBOps - Nguyen Dai Hoanh (VNAIGC) · AGPL-3.0</span> ·
+                <a href="https://github.com/nguyendaihoanh/fnbop" target="_blank" rel="noopener noreferrer" style="color: var(--text-secondary); text-decoration: underline;" data-i18n="legal.source_code">GitHub Source</a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Dashboard Content -->
+    <header class="header">
+        <div class="h-left">
+            <h1>F&B Executive</h1>
+            <span class="badge">FNBOPS / WFM</span>
+        </div>
+        <div class="h-right" style="display: flex; gap: 12px; align-items: center;">
+            <a href="index.html" class="btn-primary" style="background: var(--accent-neutral-bg, #F5EAE1); color: var(--text-primary); text-decoration: none; padding: 6px 12px; font-size: 13px; font-weight: 700; border-radius: 8px; display: inline-flex; align-items: center; gap: 6px;">📱 Bản Mobile</a>
+            <a href="monthly-report.html" id="btnMonthlyReportDesktop" class="btn-primary" style="background: var(--bg-panel, #FFFFFF); color: var(--text-primary); border: 1px solid var(--border); text-decoration: none; padding: 6px 12px; font-size: 13px; font-weight: 700; border-radius: 8px; display: none; align-items: center; gap: 6px;">📊 Báo Cáo Tháng</a>
+            <button id="btnThemeToggleDesktop" class="btn-primary" style="background: var(--accent-neutral-bg, #F5EAE1); color: var(--text-primary); border: 1px solid var(--border); padding: 6px 10px; font-size: 13px; font-weight: 700; border-radius: 8px; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;" title="Chuyển chế độ Sáng / Tối">
+                <span id="themeToggleIconDesktop">🌙</span>
+            </button>
+            <button id="btnAdminStaffDesktop" class="btn-primary" style="background: var(--accent-emerald, #0D9488); display: none; align-items: center; gap: 6px;">🔑 Quản Lý PIN</button>
+            <button id="btnAdminLockoutsDesktop" class="btn-primary" style="background: #e11d48; display: none; align-items: center; gap: 6px;">🛡️ Mở Khóa Đăng Nhập</button>
+            <button id="btnOpenEval" class="btn-primary" style="background: var(--accent-coral);">ĐÁNH GIÁ</button>
+            <select id="monthFilter" class="month-select"></select>
+            <button id="btnLogoutDesktop" class="btn-primary" style="background: transparent; border: 1px solid var(--border); color: var(--text-secondary); padding: 6px 10px; font-size: 12px; font-weight: 600; cursor: pointer;">🚪 Đăng Xuất</button>
+        </div>
+    </header>
+
+    <nav class="tabs-container" aria-label="Chế độ xem Dashboard">
+        <button class="tab-btn active" data-tab="ops">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+            </svg>
+            <span>Vận Hành (Ops)</span>
+        </button>
+        <button class="tab-btn" data-tab="heatmap">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M8 2v4"/>
+                <path d="M16 2v4"/>
+                <rect width="18" height="18" x="3" y="4" rx="2"/>
+                <path d="M3 10h18"/>
+            </svg>
+            <span>Mật Độ Phân Ca</span>
+        </button>
+        <button class="tab-btn" data-tab="payslip">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/>
+                <polyline points="14 2 14 8 20 8"/>
+                <line x1="16" x2="8" y1="13" y2="13"/>
+                <line x1="16" x2="8" y1="17" y2="17"/>
+            </svg>
+            <span>Phiếu Lương Chi Tiết</span>
+        </button>
+    </nav>
+    
+    <!-- DASHBOARD 3-COLUMN NO-SCROLL GRID -->
+    <main id="opsView" class="dashboard-grid view-section active animate-enter" style="--index: 1">
+        
+        <!-- COLUMN 1: Financials & Ops -->
+        <div class="col">
+            
+            <div class="card auto-height">
+                <div class="card-header">
+                    <h2>Chi Phí & Vận Hành</h2>
+                </div>
+                <div class="metrics-grid">
+                    <div class="metric-box">
+                        <h3>Tổng Quỹ Lương</h3>
+                        <div class="val tabular-nums" id="valTotalPay">0 ₫</div>
+                        <div class="sub-metric" id="subTargetPay">Dự toán: 0 ₫</div>
+                    </div>
+                    <div class="metric-box">
+                        <h3>Chi Phí OT</h3>
+                        <div class="val tabular-nums coral" id="valOTCost">0 ₫</div>
+                    </div>
+                    <div class="metric-box">
+                        <h3>Tổng Số Ca</h3>
+                        <div class="val tabular-nums" id="valTotalShifts">0</div>
+                        <div class="sub-metric" id="subTargetShifts">Định mức: 0 ca</div>
+                    </div>
+                    <div class="metric-box">
+                        <h3>Chỉ Số Chuyên Cần</h3>
+                        <div class="val tabular-nums emerald" id="valAttendanceScore">100%</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Health Distribution -->
+            <div class="card fill-height">
+                <div class="card-header">
+                    <h2>Mật Độ Ca Làm (Sức Khỏe NS)</h2>
+                </div>
+                <div class="scroll-list">
+                    
+                    <div class="heatmap-row amber">
+                        <span>Rủi ro Burn-out (>7 ca/t)</span>
+                        <span class="tabular-nums" id="valOverwork">0</span>
+                    </div>
+                    <div id="listOverwork" class="mini-staff-list amber"></div>
+                    
+                    <div class="heatmap-row coral">
+                        <span>Rủi ro Bỏ việc (<2 ca/t)</span>
+                        <span class="tabular-nums" id="valUnderwork">0</span>
+                    </div>
+                    <div id="listUnderwork" class="mini-staff-list coral"></div>
+                    
+                    <div class="heatmap-row base">
+                        <span>Nhân sự Tối ưu (4-6 ca/t)</span>
+                        <span class="tabular-nums" id="valOptimal">0</span>
+                    </div>
+                    
+                </div>
+            </div>
+
+        </div>
+
+        <!-- COLUMN 2: Chart & Leaderboard -->
+        <div class="col">
+            
+            <div class="card auto-height" style="min-height: 250px; flex: 1.5;">
+                <div class="card-header">
+                    <h2>Biến động Chi phí Lương</h2>
+                </div>
+                <div class="chart-wrapper">
+                    <canvas id="payrollChart"></canvas>
+                </div>
+            </div>
+
+            <div class="card fill-height" style="flex: 1;">
+                <div class="card-header">
+                    <h2>Top Chi Phí Phát Sinh (OT)</h2>
+                </div>
+                <div class="scroll-list" id="topOTList">
+                    <!-- JS Injected -->
+                </div>
+            </div>
+
+        </div>
+
+        <!-- COLUMN 3: Alerts & Compliance -->
+        <div class="col">
+            
+            <!-- MoM Analysis -->
+            <div class="card auto-height">
+                <div class="card-header">
+                    <h2 id="momTitle">Tăng Trưởng (MoM)</h2>
+                </div>
+                <div class="scroll-list" style="overflow: visible;">
+                    <div class="list-item">
+                        <span class="li-name" style="font-weight: 500;">Quỹ Lương</span>
+                        <div class="trend-pill" id="momPay">0%</div>
+                    </div>
+                    <div class="list-item">
+                        <span class="li-name" style="font-weight: 500;">Chi Phí OT</span>
+                        <div class="trend-pill" id="momOT">0%</div>
+                    </div>
+                    <div class="list-item">
+                        <span class="li-name" style="font-weight: 500;">Tổng Số Ca</span>
+                        <div class="trend-pill" id="momShifts">0%</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Alerts -->
+            <div class="card fill-height">
+                <div class="card-header">
+                    <h2>Compliance & Data Alerts</h2>
+                    <span class="badge" id="alertCount">0 Alert</span>
+                </div>
+                <div class="scroll-list" id="alertsList">
+                    <!-- JS Injected -->
+                </div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- HEATMAP VIEW -> ROSTER COMPLIANCE VIEW -->
+    <main id="heatmapView" class="heatmap-grid view-section animate-enter" style="--index: 1;">
+        <div style="display: flex; flex-direction: column; gap: 16px;">
+            <!-- Top: 4 KPI Metrics Row -->
+            <div id="rosterKpiRow" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px;">
+                <!-- JS Injected KPI Cards -->
+            </div>
+
+            <!-- Main Executive Grid (Left 68% - Right 32%) -->
+            <div style="display: grid; grid-template-columns: 2.1fr 1fr; gap: 16px; align-items: start;">
+                <!-- Left: Main Matrix Card -->
+                <div class="card" style="padding: 16px 20px;">
+                    <div class="card-header" style="border-bottom: 1px dashed var(--border); padding-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
+                        <h2 style="display: flex; align-items: center; gap: 8px; margin: 0; font-size: 14px; font-weight: 700;">
+                            <span style="color: var(--accent-coral);">📅</span> Lịch Phân Ca Toàn Tuần
+                        </h2>
+                        
+                        <!-- Week Navigation & Legend & Actions -->
+                        <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                            <div id="rosterAdminActionsDesktop" style="display: none; align-items: center; gap: 6px;">
+                                <span id="rosterStatusBadgeDesktop" style="font-size: 11px; font-weight: 700; padding: 3px 7px; border-radius: 4px; background: var(--bg-secondary); border: 1px solid var(--border); color: var(--text-secondary);">--</span>
+                                <button id="btnRosterAutoFillDesktop" class="btn-primary" style="background: var(--accent-amber); color: #1a1412; font-size: 11px; padding: 4px 8px; font-weight: 700; border: none; border-radius: 4px; cursor: pointer;">⚡ Tự Động Xếp Ca</button>
+                                <button id="btnRosterPublishDesktop" class="btn-primary" style="background: var(--accent-coral); color: #fff; font-size: 11px; padding: 4px 8px; font-weight: 700; border: none; border-radius: 4px; cursor: pointer;">📢 Chốt & Công Bố</button>
+                            </div>
+
+                            <div style="display: flex; align-items: center; gap: 6px; background: var(--bg-secondary); padding: 2px 8px; border-radius: 6px; border: 1px solid var(--border);">
+                                <button id="btnPrevWeek" style="background: none; border: none; cursor: pointer; font-size: 13px; padding: 2px 4px; color: var(--text-primary);">◄</button>
+                                <span id="weekLabelDisplay" style="font-weight: 600; font-size: 12px; min-width: 100px; text-align: center;">Tuần: --/--</span>
+                                <button id="btnNextWeek" style="background: none; border: none; cursor: pointer; font-size: 13px; padding: 2px 4px; color: var(--text-primary);">►</button>
+                            </div>
+
+                            <div style="display: flex; gap: 4px; font-size: 11px;">
+                                <span style="background: var(--bg-secondary); color: var(--text-secondary); padding: 2px 5px; border-radius: 3px; border: 1px solid var(--border);">Đã xếp</span>
+                                <span style="background: var(--bg-secondary); color: var(--text-secondary); padding: 2px 5px; border-radius: 3px; border: 1px dashed var(--border);">Trống</span>
+                                <span style="background: rgba(240,165,0,0.1); color: var(--accent-amber); padding: 2px 5px; border-radius: 3px; border: 1px solid rgba(240,165,0,0.3);">Thừa</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Single Week Table Container -->
+                    <div id="weeklyRosterContainer" style="padding-top: 12px;">
+                        <!-- JS Injected Compact Table -->
+                    </div>
+                </div>
+
+                <!-- Right: Stacked Analytics Column -->
+                <div style="display: flex; flex-direction: column; gap: 16px;">
+                    <!-- Staff Workload Distribution -->
+                    <div class="card" style="padding: 16px;">
+                        <h3 style="font-size: 13px; font-weight: 700; margin: 0 0 10px 0; display: flex; align-items: center; justify-content: space-between;">
+                            <span style="display: flex; align-items: center; gap: 6px;"><span>👥</span> Tải Ca Trực / Nhân Viên</span>
+                            <span id="staffTotalBadge" style="font-size: 11px; font-weight: normal; color: var(--text-secondary); background: var(--bg-secondary); padding: 2px 6px; border-radius: 4px;">-- nhân sự</span>
+                        </h3>
+                        <div id="staffWorkloadContainer" style="display: flex; flex-direction: column; gap: 8px; max-height: 170px; overflow-y: auto;">
+                            <!-- JS Injected -->
+                        </div>
+                    </div>
+
+                    <!-- Anomaly & Violation Log -->
+                    <div class="card" style="padding: 16px;">
+                        <h3 style="font-size: 13px; font-weight: 700; margin: 0 0 10px 0; display: flex; align-items: center; justify-content: space-between;">
+                            <span style="display: flex; align-items: center; gap: 6px;"><span>⚠️</span> Cảnh Báo Thiếu Ca</span>
+                            <span id="anomalyBadgeCount" style="font-size: 11px; font-weight: 600; color: var(--accent-coral); background: rgba(220,38,38,0.1); padding: 2px 6px; border-radius: 4px;">0 cảnh báo</span>
+                        </h3>
+                        <div id="rosterAnomalyContainer" style="display: flex; flex-direction: column; gap: 6px; max-height: 170px; overflow-y: auto;">
+                            <!-- JS Injected -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- PAYSLIP VIEW -->
+    <main id="payslipView" class="payslip-grid view-section animate-enter" style="--index: 1">
+        <div class="card fill-height w-full">
+            <div class="card-header" style="border-bottom: 1px dashed var(--border); padding-bottom: 16px; display: flex; justify-content: space-between; align-items: center;">
+                <h2 style="display: flex; align-items: center; gap: 8px;">
+                    <span style="color: var(--accent-emerald);">📋</span> Bảng Kê Chi Tiết Lương & Đánh Giá Nhân Sự
+                </h2>
+                <div class="controls" style="display: flex; gap: 8px; align-items: center;">
+                    <input type="text" id="payslipSearch" class="premium-input" placeholder="Tìm tên nhân sự...">
+                    <button id="btnExportPayrollExcelDesktop" class="btn-primary" style="background: #18222F; color: #fff; font-size: 12px; font-weight: 700; padding: 6px 12px; border-radius: 6px; border: 1px solid #334155; cursor: pointer; display: flex; align-items: center; gap: 4px;">
+                        <span>📥</span> Xuất Excel Bảng Lương
+                    </button>
+                </div>
+            </div>
+            <div class="table-responsive" style="padding-top: 16px; overflow-y: auto; max-height: calc(100vh - 220px);">
+                <table class="payslip-table w-full">
+                    <thead>
+                        <tr>
+                            <th style="text-align: left;">NHÂN VIÊN</th>
+                            <th>TỔNG PHÚT LÀM</th>
+                            <th>LƯƠNG/GIỜ</th>
+                            <th>LƯƠNG CƠ BẢN</th>
+                            <th>THƯỞNG NÓNG</th>
+                            <th>VI PHẠM (CẢNH BÁO)</th>
+                            <th>TẠM ỨNG</th>
+                            <th>THỰC NHẬN</th>
+                            <th>HÀNH ĐỘNG</th>
+                        </tr>
+                    </thead>
+                    <tbody id="payslipTableBody">
+                        <!-- JS Injected -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+    <!-- EVALUATION MODAL -->
+    <div id="evalModal" class="modal-overlay" style="display: none;">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h2>Chấm Điểm Nhận Sự</h2>
+                <button id="btnCloseEval" class="btn-close">&times;</button>
+            </div>
+            
+            <!-- CẢNH BÁO CHƯA ĐÁNH GIÁ -->
+            <div id="missingEvalsContainer" style="display: none; padding: 16px 24px 0 24px;">
+                <div class="alert-box coral" style="align-items: stretch;">
+                    <div class="alert-icon">⚠️</div>
+                    <div class="alert-text" style="width: 100%;">
+                        <strong id="missingEvalsTitle">Cảnh báo: Có ca chưa chấm điểm!</strong>
+                        <div id="missingEvalsList" style="display: flex; flex-direction: column; gap: 6px; margin-top: 8px; max-height: 120px; overflow-y: auto; padding-right: 4px;">
+                            <!-- JS Inject -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-body">
+                <div class="form-group" style="display: flex; gap: 12px; flex-direction: row;">
+                    <div style="flex: 1; display: flex; flex-direction: column; gap: 8px;">
+                        <label>Nhân Viên</label>
+                        <select id="evalStaff" class="form-control"></select>
+                    </div>
+                    <div style="flex: 1; display: flex; flex-direction: column; gap: 8px;">
+                        <label>Ngày Đánh Giá</label>
+                        <input type="date" id="evalDate" class="form-control">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>Ca Làm Việc</label>
+                    <select id="evalShift" class="form-control">
+                        <option value="Ca Sáng">Ca Sáng</option>
+                        <option value="Ca Chiều">Ca Chiều</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>Tác Phong & Kỷ Luật (Vào ca)</label>
+                    <div class="star-rating" data-category="discipline">
+                        <span data-val="1">★</span><span data-val="2">★</span><span data-val="3">★</span><span data-val="4">★</span><span data-val="5">★</span>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>Nghiệp Vụ & Phục Vụ (Trong ca)</label>
+                    <div class="star-rating" data-category="service">
+                        <span data-val="1">★</span><span data-val="2">★</span><span data-val="3">★</span><span data-val="4">★</span><span data-val="5">★</span>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Vệ Sinh & Bàn Giao (Ra ca)</label>
+                    <div class="star-rating" data-category="cleanliness">
+                        <span data-val="1">★</span><span data-val="2">★</span><span data-val="3">★</span><span data-val="4">★</span><span data-val="5">★</span>
+                    </div>
+                </div>
+
+                <div class="form-group mt-2">
+                    <label style="color: var(--accent-coral);">Vi Phạm (Red Flags)</label>
+                    <label class="check-box"><input type="checkbox" id="rfLate"> Đi trễ > 15 phút</label>
+                    <label class="check-box"><input type="checkbox" id="rfMistake"> Sai món / Đổ vỡ hao hụt</label>
+                    <label class="check-box"><input type="checkbox" id="rfAbsence"> Không quan sát gây mất bill/Khách bỏ về quên tính tiền</label>
+                    <label class="check-box"><input type="checkbox" id="rfCheckout"> Quên chấm công / Checkout sai</label>
+                </div>
+
+                <div class="form-group mt-2">
+                    <label style="color: var(--accent-emerald);">Khen Thưởng Nóng (Doanh thu cao)</label>
+                    <div class="bonus-pills" id="bonusOptions">
+                        <label class="bonus-pill"><input type="radio" name="bonus" value="0" checked> Không</label>
+                        <label class="bonus-pill"><input type="radio" name="bonus" value="20000"> +20k</label>
+                        <label class="bonus-pill"><input type="radio" name="bonus" value="30000"> +30k</label>
+                        <label class="bonus-pill"><input type="radio" name="bonus" value="50000"> +50k</label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Ghi Chú</label>
+                    <textarea id="evalNotes" class="form-control" rows="2" placeholder="Ghi nhận thưởng phạt..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="btnSubmitEval" class="btn-primary" style="width: 100%;">Gửi Đánh Giá</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- BONUS ADJUSTMENT LEDGER MODAL -->
+    <div id="bonusModal" class="modal-overlay" style="display: none;">
+        <div class="modal-box" style="max-width: 520px; padding: 0; overflow: hidden; border-radius: 24px;">
+            <div class="modal-header" style="padding: 20px 24px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
+                <h2 style="display: flex; align-items: center; gap: 8px; font-size: 18px;">
+                    <span style="color: var(--accent-emerald);">🎁</span> Thưởng Nóng & Phụ Cấp Hiệu Suất
+                </h2>
+                <button class="btn-close" onclick="closeBonusModal()">&times;</button>
+            </div>
+            
+            <div class="modal-body" style="background: var(--bg-base); padding: 20px; max-height: 78vh; overflow-y: auto;">
+                <!-- Staff Info Header -->
+                <div style="background: #fff; padding: 14px 18px; border-radius: 14px; border: 1px solid var(--border); margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <div style="font-size: 11px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Nhân Sự</div>
+                        <div id="bonusStaffName" style="font-size: 18px; font-weight: 800; color: var(--text-primary);">---</div>
+                    </div>
+                    <div style="text-align: right;">
+                        <div style="font-size: 11px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Kỳ Đối Soát</div>
+                        <div id="bonusMonthLabel" style="font-size: 15px; font-weight: 700; color: var(--accent-coral);">Tháng 8</div>
+                    </div>
+                </div>
+
+                <!-- Add New Bonus Form -->
+                <div style="background: #fff; padding: 18px; border-radius: 16px; border: 1px solid var(--border); margin-bottom: 16px;">
+                    <div style="font-size: 13px; font-weight: 800; margin-bottom: 12px; color: var(--text-primary); display: flex; align-items: center; gap: 6px;">
+                        <span>➕</span> Ghi Nhận Khoản Thưởng Mới
+                    </div>
+
+                    <!-- Payment Type Selection -->
+                    <div class="form-group mb-3">
+                        <label style="font-size: 12px; font-weight: 700; color: var(--text-secondary); margin-bottom: 6px; display: block;">Hình Thức Chi Trả:</label>
+                        <div style="display: flex; gap: 10px;">
+                            <label class="bonus-type-pill active" id="typeBankLabel" onclick="setBonusPaymentType('bank')">
+                                <input type="radio" name="bonusPaymentType" value="bank" checked style="display: none;">
+                                💳 Chuyển Khoản Ngày 05
+                            </label>
+                            <label class="bonus-type-pill" id="typeCashLabel" onclick="setBonusPaymentType('cash')">
+                                <input type="radio" name="bonusPaymentType" value="cash" style="display: none;">
+                                💵 Đã Đưa Tiền Mặt
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Bonus Date Selection -->
+                    <div class="form-group mb-3" id="bonusDateGroup">
+                        <label style="font-size: 12px; font-weight: 700; color: var(--text-secondary); margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center;">
+                            <span>📅 Ngày Chi Tiền / Ghi Nhận:</span>
+                            <span id="bonusDateHint" style="font-size: 11px; font-weight: normal; color: var(--accent-coral); display: none;">(Chọn ngày đã đưa tiền mặt cho NV)</span>
+                        </label>
+                        <input type="date" id="bonusDateInput" class="premium-input w-full" style="font-size: 14px; font-weight: 600; font-family: var(--font-mono); padding: 9px 12px;">
+                    </div>
+
+                    <!-- Preset Amount Buttons -->
+                    <div class="form-group mb-3">
+                        <label style="font-size: 12px; font-weight: 700; color: var(--text-secondary); margin-bottom: 6px; display: block;">Chọn Nhanh Định Mức:</label>
+                        <div class="bonus-preset-group" id="bonusPresetGroup">
+                            <button type="button" class="preset-btn" onclick="setBonusAmount(20000)">+20k</button>
+                            <button type="button" class="preset-btn" onclick="setBonusAmount(30000)">+30k</button>
+                            <button type="button" class="preset-btn" onclick="setBonusAmount(50000)">+50k</button>
+                            <button type="button" class="preset-btn" onclick="setBonusAmount(100000)">+100k</button>
+                            <button type="button" class="preset-btn" id="btnPreset5Pct" onclick="setBonusPercent(5)">+5% Lương</button>
+                            <button type="button" class="preset-btn" id="btnPreset10Pct" onclick="setBonusPercent(10)">+10% Lương</button>
+                        </div>
+                    </div>
+
+                    <!-- Custom Amount Input -->
+                    <div class="form-group mb-3">
+                        <label style="font-size: 12px; font-weight: 700; color: var(--text-secondary); margin-bottom: 6px; display: block;">Số Tiền Ghi Nhận (VNĐ):</label>
+                        <input type="number" id="bonusAmountInput" class="premium-input w-full" placeholder="Ví dụ: 50000" step="5000" style="font-size: 16px; font-weight: 700; font-family: var(--font-mono); color: var(--accent-emerald);">
+                    </div>
+
+                    <!-- Quick Reason Dropdown & Notes -->
+                    <div class="form-group mb-3">
+                        <label style="font-size: 12px; font-weight: 700; color: var(--text-secondary); margin-bottom: 6px; display: block;">Lý Do / Hạng Mục Thưởng:</label>
+                        <select id="bonusReasonSelect" class="premium-input w-full" style="margin-bottom: 8px;" onchange="handleBonusReasonChange()">
+                            <option value="Thưởng nóng doanh thu ca / Khách đông đột biến">🔥 Thưởng nóng doanh thu ca / Khách đông đột biến</option>
+                            <option value="Thưởng hiệu suất hoàn thành tốt ca trực">⭐ Thưởng hiệu suất hoàn thành tốt ca trực</option>
+                            <option value="Thưởng hiệu suất làm việc cuối tháng">🏆 Thưởng hiệu suất làm việc cuối tháng</option>
+                            <option value="Phụ cấp tăng cường ca cao điểm / Tăng ca gấp">⚡ Phụ cấp tăng cường ca cao điểm / Tăng ca gấp</option>
+                            <option value="Phân bổ tiền Tip dịch vụ & Khách khen">☕ Phân bổ tiền Tip dịch vụ & Khách khen</option>
+                            <option value="custom">✏️ Lý do khác (Tự nhập tay)...</option>
+                        </select>
+                        <input type="text" id="bonusCustomReason" class="premium-input w-full" placeholder="Nhập lý do chi tiết..." style="display: none;">
+                    </div>
+
+                    <button type="button" id="btnAddBonusEntry" class="btn-primary" style="width: 100%; justify-content: center; background: var(--accent-emerald); padding: 12px; font-weight: 700;">
+                        ✓ Xác Nhận Thêm Khoản Thưởng
+                    </button>
+                </div>
+
+                <!-- History Audit Trail -->
+                <div style="background: #fff; padding: 18px; border-radius: 16px; border: 1px solid var(--border);">
+                    <div style="font-size: 13px; font-weight: 800; margin-bottom: 12px; color: var(--text-primary); display: flex; justify-content: space-between; align-items: center;">
+                        <span>📜 Lịch Sử Thưởng Trong Kỳ (<span id="bonusEntryCount">0</span> lần)</span>
+                    </div>
+
+                    <div id="bonusHistoryList" class="bonus-history-list">
+                        <!-- JS Injected List -->
+                    </div>
+
+                    <!-- Summary Box -->
+                    <div class="bonus-summary-box" style="margin-top: 14px; background: #FAF6F0; padding: 14px; border-radius: 12px; border: 1px solid var(--border);">
+                        <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 4px;">
+                            <span style="color: var(--text-secondary);">Tổng tiền thưởng cả kỳ:</span>
+                            <strong id="bonusSumTotal" style="color: var(--text-primary); font-family: var(--font-mono);">+0 đ</strong>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; font-size: 12px; color: var(--text-secondary); margin-bottom: 4px;">
+                            <span>• Đã nhận tiền mặt tại quầy:</span>
+                            <span id="bonusSumCash" style="font-family: var(--font-mono); color: var(--accent-coral);">-0 đ</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: 700; border-top: 1px dashed var(--border); padding-top: 6px; margin-top: 6px;">
+                            <span style="color: var(--text-primary);">• Sẽ cộng chuyển khoản ngày 05:</span>
+                            <span id="bonusSumBank" style="font-family: var(--font-mono); color: var(--accent-emerald);">+0 đ</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer" style="padding: 14px 24px; background: #fff; border-top: 1px solid var(--border); display: flex; justify-content: flex-end;">
+                <button type="button" class="btn-primary" onclick="closeBonusModal()" style="background: var(--text-primary); padding: 10px 24px;">Xong / Đóng Lại</button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ADVANCE SALARY MODAL -->
+    <div id="advanceModal" class="modal-overlay" style="display: none;">
+        <div class="modal-box" style="max-width: 520px; padding: 0; overflow: hidden; border-radius: 24px;">
+            <div class="modal-header" style="padding: 20px 24px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
+                <h2 style="display: flex; align-items: center; gap: 8px; font-size: 18px;">
+                    <span style="color: var(--accent-amber, #F59E0B);">💸</span> Quản Lý Ứng Lương
+                </h2>
+                <button class="btn-close" onclick="closeAdvanceModal()">&times;</button>
+            </div>
+            
+            <div class="modal-body" style="background: var(--bg-base); padding: 20px; max-height: 78vh; overflow-y: auto;">
+                <div style="background: #fff; padding: 14px 18px; border-radius: 14px; border: 1px solid var(--border); margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <div style="font-size: 11px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Nhân Sự</div>
+                        <div id="advanceStaffName" style="font-size: 18px; font-weight: 800; color: var(--text-primary);">---</div>
+                    </div>
+                    <div style="text-align: right;">
+                        <div style="font-size: 11px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Kỳ Đối Soát</div>
+                        <div id="advanceMonthLabel" style="font-size: 15px; font-weight: 700; color: var(--accent-coral);">Tháng 8</div>
+                    </div>
+                </div>
+
+                <div style="background: #fff; padding: 18px; border-radius: 16px; border: 1px solid var(--border); margin-bottom: 16px;">
+                    <div style="font-size: 13px; font-weight: 800; margin-bottom: 12px; color: var(--text-primary); display: flex; align-items: center; gap: 6px;">
+                        <span>➕</span> Ghi Nhận Khoản Ứng Mới
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label style="font-size: 12px; font-weight: 700; color: var(--text-secondary); margin-bottom: 6px; display: block;">Hình Thức Ứng:</label>
+                        <div style="display: flex; gap: 10px;">
+                            <label class="bonus-type-pill active" id="advTypeBankLabel" onclick="setAdvPaymentType('bank')">
+                                <input type="radio" name="advPaymentType" value="bank" checked style="display: none;">
+                                💳 Đã CK Ứng
+                            </label>
+                            <label class="bonus-type-pill" id="advTypeCashLabel" onclick="setAdvPaymentType('cash')">
+                                <input type="radio" name="advPaymentType" value="cash" style="display: none;">
+                                💵 Đưa Tiền Mặt
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label style="font-size: 12px; font-weight: 700; color: var(--text-secondary); margin-bottom: 6px; display: block;">Ngày Ứng Tiền:</label>
+                        <input type="date" id="advanceDateInput" class="premium-input w-full" style="font-size: 14px; font-weight: 600; font-family: var(--font-mono); padding: 9px 12px;">
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label style="font-size: 12px; font-weight: 700; color: var(--text-secondary); margin-bottom: 6px; display: block;">Số Tiền Ứng (VNĐ):</label>
+                        <input type="number" id="advanceAmountInput" class="premium-input w-full" placeholder="Ví dụ: 500000" step="10000" style="font-size: 16px; font-weight: 700; font-family: var(--font-mono); color: var(--accent-coral, #F43F5E);">
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label style="font-size: 12px; font-weight: 700; color: var(--text-secondary); margin-bottom: 6px; display: block;">Lý Do Ứng:</label>
+                        <input type="text" id="advanceReasonInput" class="premium-input w-full" placeholder="Ví dụ: Đóng tiền trọ...">
+                    </div>
+
+                    <button type="button" id="btnAddAdvanceEntry" class="btn-primary" style="width: 100%; justify-content: center; background: var(--accent-coral, #F43F5E); padding: 12px; font-weight: 700;">
+                        ✓ Xác Nhận Ứng Lương
+                    </button>
+                </div>
+
+                <div style="background: #fff; padding: 18px; border-radius: 16px; border: 1px solid var(--border);">
+                    <div style="font-size: 13px; font-weight: 800; margin-bottom: 12px; color: var(--text-primary); display: flex; justify-content: space-between; align-items: center;">
+                        <span>📜 Lịch Sử Ứng Trong Kỳ (<span id="advanceEntryCount">0</span> lần)</span>
+                    </div>
+
+                    <div id="advanceHistoryList" class="bonus-history-list"></div>
+
+                    <div class="bonus-summary-box" style="margin-top: 14px; background: #FFF5F5; padding: 14px; border-radius: 12px; border: 1px solid var(--border);">
+                        <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 4px;">
+                            <span style="color: var(--text-secondary);">Tổng tiền đã ứng cả kỳ:</span>
+                            <strong id="advanceSumTotal" style="color: var(--accent-coral); font-family: var(--font-mono);">-0 đ</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer" style="padding: 14px 24px; background: #fff; border-top: 1px solid var(--border); display: flex; justify-content: flex-end;">
+                <button type="button" class="btn-primary" onclick="closeAdvanceModal()" style="background: var(--text-primary); padding: 10px 24px;">Đóng Lại</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- PAYSLIP MODAL (V2) -->
+    <div id="payslipModal" class="modal-overlay" style="display: none;">
+        <div class="modal-box" style="max-width: 480px; padding: 0; overflow: hidden; border-radius: 24px;">
+            <div class="modal-header" style="padding: 20px 24px; border-bottom: 1px solid var(--border);">
+                <h2 style="display: flex; align-items: center; gap: 8px;"><span style="color: var(--accent-coral);">📄</span> Phiếu Lương Nhân Viên</h2>
+                <button class="btn-close" onclick="document.getElementById('payslipModal').style.display='none'">&times;</button>
+            </div>
+            <div class="modal-body" style="background: var(--bg-base); padding: 20px;">
+                <div id="payslipContent">
+                    <!-- JS Injected -->
+                </div>
+            </div>
+            <div class="modal-footer" style="padding: 16px 24px; background: #fff; border-top: 1px solid var(--border); display: flex; justify-content: space-between; gap: 12px;">
+                <button id="btnPrintPayslip" class="btn-primary" style="background: var(--text-secondary); flex: 1; display: flex; justify-content: center; align-items: center; gap: 8px;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+                    In Phiếu
+                </button>
+                <button id="btnTelegramPayslip" class="btn-primary" style="background: var(--accent-coral); flex: 1.5; display: flex; justify-content: center; align-items: center; gap: 8px;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                    Gửi Telegram
+                </button>
+                <button id="btnClosePayslip" class="btn-primary" style="background: transparent; color: var(--text-primary); border: 1px solid var(--border); flex: 0.8;">Đóng</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin Staff Accounts Modal Desktop -->
+    <div id="adminStaffModalDesktop" class="login-overlay" style="display:none; z-index:99999;">
+        <div class="login-box" style="max-width:620px; width:92%; max-height:88vh; display:flex; flex-direction:column; padding:24px; background:var(--bg-card, #fff);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+                <div>
+                    <h2 style="font-size:18px; font-weight:700; margin:0; color:var(--text-primary);">Quản Lý Tài Khoản & PIN 4 Số</h2>
+                    <div id="adminStaffSubTitleDesktop" style="font-size:11px; color:var(--text-secondary);">4 Nhân Sự • Cấp PIN & 1-Chạm Gửi Zalo</div>
+                </div>
+                <button id="btnCloseAdminModalDesktop" style="background:transparent; border:none; font-size:22px; cursor:pointer; color:var(--text-secondary); line-height:1;">&times;</button>
+            </div>
+            <!-- Lock Box -->
+            <div id="adminLockBoxDesktop" style="background:var(--bg-card-sub, #f5f0eb); border:1px solid var(--border); border-radius:8px; padding:10px 14px; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center;">
+                <div>
+                    <div style="font-size:12px; font-weight:700;" id="txtAdminLockMonthDesktop">Kỳ Lương Tháng --</div>
+                    <div style="font-size:11px; color:var(--text-secondary);" id="txtAdminLockStatusDesktop">Trạng thái: Đang mở đối soát</div>
+                </div>
+                <button id="btnAdminToggleLockDesktop" class="btn-primary" style="background:var(--accent-coral); font-size:11px; padding:6px 12px;">Đổi Trạng Thái</button>
+            </div>
+            <!-- Search -->
+            <input type="text" id="adminStaffSearchDesktop" class="form-control" placeholder="Tìm tên nhân viên hoặc username..." style="margin-bottom:8px; font-size:12px; padding:8px 12px;">
+            <!-- Tabs lọc trạng thái -->
+            <div style="display:flex; gap:6px; margin-bottom:10px;">
+                <button type="button" id="filterTabAllDesktop" onclick="setAdminStaffFilterDesktop('ALL')" class="btn-primary" style="flex:1; padding:5px 8px; font-size:11px; font-weight:700; background:var(--border, #e0e0e0); color:var(--text-primary);">Tất cả</button>
+                <button type="button" id="filterTabActiveDesktop" onclick="setAdminStaffFilterDesktop('ACTIVE')" class="btn-primary" style="flex:1; padding:5px 8px; font-size:11px; font-weight:600; background:transparent; border:1px solid var(--border); color:#059669;">Đang làm</button>
+                <button type="button" id="filterTabInactiveDesktop" onclick="setAdminStaffFilterDesktop('INACTIVE')" class="btn-primary" style="flex:1; padding:5px 8px; font-size:11px; font-weight:600; background:transparent; border:1px solid var(--border); color:#dc2626;">Đã nghỉ</button>
+            </div>
+            <!-- List -->
+            <div id="adminStaffListDesktop" style="flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:8px; max-height:50vh; padding-right:4px;">
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin Lockouts & Security Rate Limit Modal Desktop -->
+    <div id="adminLockoutsModalDesktop" class="login-overlay" style="display:none; z-index:99999;">
+        <div class="login-box" style="max-width:680px; width:92%; max-height:88vh; display:flex; flex-direction:column; padding:24px; background:var(--bg-card, #fff);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+                <div>
+                    <h2 style="font-size:18px; font-weight:700; margin:0; color:var(--text-primary);">🛡️ Quản Lý Khóa Đăng Nhập (Rate Limit 3 Tầng)</h2>
+                    <div style="font-size:11px; color:var(--text-secondary);">Chỉ dành cho Admin • Kiểm soát Tầng 1 (60s), Tầng 2 (30m), Tầng 3 (5h)</div>
+                </div>
+                <button id="btnCloseAdminLockoutsModalDesktop" style="background:transparent; border:none; font-size:22px; cursor:pointer; color:var(--text-secondary); line-height:1;">&times;</button>
+            </div>
+            
+            <!-- Cafe Whitelist IP Banner -->
+            <div style="background:var(--bg-card-sub, #f5f0eb); border:1px solid var(--border); border-radius:8px; padding:10px 14px; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center;">
+                <div>
+                    <div style="font-size:12px; font-weight:700; color:var(--text-primary);">
+                        📶 Whitelist IP Quán (POS Heartbeat): <span id="adminLiveCafeIpDesktop" style="font-family:monospace; background:#e0f2fe; color:#0369a1; padding:2px 6px; border-radius:4px;">Đang tải...</span>
+                    </div>
+                    <div style="font-size:11px; color:var(--text-secondary); margin-top:2px;">
+                        Nhân viên truy cập từ IP này chỉ bị khóa Username, KHÔNG khóa IP mạng quán.
+                    </div>
+                </div>
+                <button id="btnRefreshLockoutsDesktop" class="btn-primary" style="background:var(--accent-neutral-bg, #e2e8f0); color:var(--text-primary); font-size:11px; padding:6px 12px; border:1px solid var(--border);">🔄 Làm Mới</button>
+            </div>
+
+            <!-- Lockouts List Header -->
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                <span style="font-size:12px; font-weight:700; color:var(--text-primary);">Danh sách đang bị khóa (<span id="txtTotalLockoutsDesktop">0</span>)</span>
+                <span style="font-size:11px; color:var(--text-secondary);">Tầng 3 bắt buộc Admin duyệt mở</span>
+            </div>
+
+            <!-- Lockouts List Container -->
+            <div id="adminLockoutsListDesktop" style="flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:8px; max-height:48vh; padding-right:4px;">
+                <div style="text-align:center; padding:30px 0; color:var(--text-secondary); font-size:13px;">
+                    Đang tải dữ liệu...
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js?v=20260923"></script>
+    <script>
+        function applyDesktopTheme(theme) {
+            document.documentElement.setAttribute('data-theme', theme);
+            localStorage.setItem('fnbops_theme', theme);
+            const icon = document.getElementById('themeToggleIconDesktop');
+            if (icon) icon.textContent = theme === 'dark' ? '☀️' : '🌙';
+        }
+        const currentDesktopTheme = localStorage.getItem('fnbops_theme') || 
+            (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        applyDesktopTheme(currentDesktopTheme);
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const btn = document.getElementById('btnThemeToggleDesktop');
+            if (btn) {
+                btn.addEventListener('click', () => {
+                    const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+                    applyDesktopTheme(next);
+                });
+            }
+        });
+    </script>
+</body>
+</html>

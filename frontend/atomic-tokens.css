@@ -1,0 +1,314 @@
+/* ==========================================================================
+   FNBOPS — ATOMIC DESIGN TOKENS & CANONICAL COMPONENT ARCHITECTURE
+   Standard: Apple HIG Mobile-First | Zero-FOUC Offline Capable
+   ========================================================================== */
+
+:root {
+  /* Lucian UX/UI Easing & Spring Tokens (lucianlabs.dev/uxui-prompt) */
+  --ux-ease: cubic-bezier(.2, .8, .2, 1);
+  --ux-spring: cubic-bezier(.34, 1.45, .64, 1);
+
+  /* Surfaces (Light Mode) */
+  --bg-app: #f4f5f7;
+  --bg-card: #ffffff;
+  --bg-card-sub: #f8fafc;
+  --bg-input: #eef0f4;
+  --glass-bg: rgba(255, 255, 255, 0.88);
+
+  /* Typography (Cool Slate Hierarchy) */
+  --text-main: #0f172a;
+  --text-sub: #475569;
+  --text-faint: #94a3b8;
+
+  /* Borders & Elevations */
+  --border-line: rgba(15, 23, 42, 0.08);
+  --border-divider: rgba(15, 23, 42, 0.05);
+  --shadow-soft: 0 2px 8px rgba(15, 23, 42, 0.04);
+  --shadow-float: 0 12px 32px -4px rgba(15, 23, 42, 0.12);
+
+  /* Semantic Accents (Apple HIG) */
+  --c-brand: #ee5d36;
+  --c-brand-bg: rgba(238, 93, 54, 0.12);
+  --c-blue: #007aff;
+  --c-blue-bg: rgba(0, 122, 255, 0.12);
+  --c-green: #10b981;
+  --c-green-bg: rgba(16, 185, 129, 0.12);
+  --c-amber: #f59e0b;
+  --c-amber-bg: rgba(245, 158, 11, 0.14);
+  --c-coral: #ef4444;
+  --c-coral-bg: rgba(239, 68, 68, 0.12);
+  --c-cyan: #06b6d4;
+  --c-cyan-bg: rgba(6, 182, 212, 0.12);
+
+  /* Radii (4 Strict Steps) */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-full: 9999px;
+
+  /* Motion Curves */
+  --spring-ios: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* Typography Stack (100% Offline-First Native System UI & Monospace) */
+  --font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  /* Strict 6-Step Type Scale */
+  --text-xs: 11px;
+  --text-sm: 12px;
+  --text-base: 14px;
+  --text-md: 16px;
+  --text-lg: 20px;
+  --text-xl: 26px;
+}
+
+/* WARM ESPRESSO SIGNATURE DARK THEME (Zero Green #b2c2a6 Tint) */
+[data-theme="dark"] {
+  --bg-app: #12100e;
+  --bg-card: #1c1917;
+  --bg-card-sub: #26221f;
+  --bg-input: #2e2925;
+  --glass-bg: rgba(28, 25, 23, 0.88);
+
+  /* Warm Stone Typography */
+  --text-main: #fafaf9;
+  --text-sub: #d6d3d1;
+  --text-faint: #a8a29e;
+
+  --border-line: rgba(255, 248, 240, 0.08);
+  --border-divider: rgba(255, 248, 240, 0.05);
+  --shadow-soft: 0 4px 16px rgba(0, 0, 0, 0.35);
+
+  --c-brand: #ff6b47;
+  --c-brand-bg: rgba(255, 107, 71, 0.18);
+  --c-blue: #0a84ff;
+  --c-blue-bg: rgba(10, 132, 255, 0.18);
+  --c-green: #30d158;
+  --c-green-bg: rgba(48, 209, 88, 0.18);
+  --c-amber: #ff9f0a;
+  --c-amber-bg: rgba(255, 159, 10, 0.18);
+  --c-coral: #ff453a;
+  --c-coral-bg: rgba(255, 69, 58, 0.18);
+  --c-cyan: #64d2ff;
+  --c-cyan-bg: rgba(100, 210, 255, 0.18);
+}
+
+/* Base Typographic Utility */
+.num-mono, [data-num-mono] {
+  font-family: var(--font-mono) !important;
+  font-variant-numeric: tabular-nums !important;
+}
+
+/* ==========================================================================
+   ATOMIC COMPONENT: BUTTONS (.ui-btn)
+   ========================================================================== */
+.ui-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 42px;
+  padding: 0 14px;
+  border-radius: var(--radius-md);
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  font-weight: 600;
+  border: 1px solid transparent;
+  cursor: pointer;
+  user-select: none;
+  box-sizing: border-box;
+  text-decoration: none;
+  transition: transform 0.15s var(--ease-out-expo), background 0.15s ease, opacity 0.15s ease, border-color 0.15s ease;
+}
+
+.ui-btn:active {
+  transform: scale(0.96);
+}
+
+.ui-btn[disabled],
+.ui-btn[data-busy="true"] {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.ui-btn--primary {
+  background: var(--c-brand);
+  color: #ffffff;
+}
+
+.ui-btn--success {
+  background: var(--c-green);
+  color: #ffffff;
+}
+
+.ui-btn--danger {
+  background: var(--c-coral-bg);
+  color: var(--c-coral);
+  border-color: rgba(239, 68, 68, 0.25);
+}
+
+.ui-btn--secondary {
+  background: var(--bg-card-sub);
+  color: var(--text-main);
+  border-color: var(--border-line);
+}
+
+.ui-btn--sm {
+  min-height: 34px;
+  padding: 0 10px;
+  font-size: var(--text-sm);
+  border-radius: var(--radius-sm);
+}
+
+/* ==========================================================================
+   ATOMIC COMPONENT: FORM INPUTS (.ui-input, .ui-select, .ui-textarea)
+   ========================================================================== */
+.ui-input,
+.ui-select,
+.ui-textarea {
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 12px;
+  font-size: var(--text-md); /* 16px: mandatory to prevent iOS Safari auto-zoom */
+  font-family: var(--font-sans);
+  color: var(--text-main);
+  background: var(--bg-input);
+  border: 1px solid var(--border-line);
+  border-radius: var(--radius-md);
+  box-sizing: border-box;
+  outline: none;
+  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.ui-input:focus,
+.ui-select:focus,
+.ui-textarea:focus {
+  border-color: var(--c-blue);
+  background: var(--bg-card);
+  box-shadow: 0 0 0 3px var(--c-blue-bg);
+}
+
+.ui-input::placeholder,
+.ui-textarea::placeholder {
+  color: var(--text-faint);
+}
+
+/* ==========================================================================
+   ATOMIC COMPONENT: UNIFIED iOS TOGGLE SWITCH (.ui-switch)
+   ========================================================================== */
+.ui-switch {
+  position: relative;
+  display: inline-block;
+  width: 44px;
+  height: 26px;
+  flex-shrink: 0;
+  cursor: pointer;
+  user-select: none;
+}
+
+.ui-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+  position: absolute;
+}
+
+.ui-switch__track {
+  position: absolute;
+  inset: 0;
+  background: var(--bg-input);
+  border: 1px solid var(--border-line);
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: background 0.25s var(--spring-ios), border-color 0.25s ease;
+}
+
+.ui-switch__track::before {
+  content: "";
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  left: 2px;
+  bottom: 2px;
+  background: #ffffff;
+  border-radius: 50%;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  transition: transform 0.25s var(--spring-ios);
+}
+
+.ui-switch input:checked + .ui-switch__track {
+  background: var(--c-green);
+  border-color: transparent;
+}
+
+.ui-switch.emergency input:checked + .ui-switch__track {
+  background: var(--c-coral);
+}
+
+.ui-switch input:checked + .ui-switch__track::before {
+  transform: translateX(18px);
+}
+
+/* ==========================================================================
+   ATOMIC COMPONENT: iOS INSET GROUPED LIST (.ui-inset-group, .ui-inset-row)
+   ========================================================================== */
+.ui-inset-group {
+  background: var(--bg-card);
+  border: 1px solid var(--border-line);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  margin-bottom: var(--space-3);
+  box-shadow: var(--shadow-sm);
+}
+
+.ui-inset-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: 12px 14px;
+  background: transparent;
+  border-bottom: 1px solid var(--border-line);
+  transition: background 0.15s ease;
+}
+
+.ui-inset-row:last-child {
+  border-bottom: none;
+}
+
+.ui-inset-row:active {
+  background: var(--bg-card-sub);
+}
+
+.ui-inset-icon-box {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 18px;
+}
+
+.ui-inset-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.ui-inset-title {
+  font-size: var(--text-md);
+  font-weight: 700;
+  color: var(--text-main);
+  line-height: 1.25;
+}
+
+.ui-inset-desc {
+  font-size: var(--text-xs);
+  color: var(--text-sub);
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

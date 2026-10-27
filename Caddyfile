@@ -1,0 +1,73 @@
+# ==============================================================================
+# FNBOPS - CADDY PRODUCTION GATEWAY CONFIGURATION
+# Automatic SSL/TLS, Brotli/Zstd/Gzip compression, reverse proxy and static cache
+# ==============================================================================
+
+{
+    # Global options
+    admin off
+    auto_https disable_redirects
+}
+
+:80, :443 {
+    # Encode responses with modern compression
+    encode zstd gzip
+
+    # Security Headers
+    header {
+        # Protect against clickjacking
+        X-Frame-Options "SAMEORIGIN"
+        # Protect against MIME sniffing
+        X-Content-Type-Options "nosniff"
+        # Referrer policy
+        Referrer-Policy "strict-origin-when-cross-origin"
+        # Remove server identity header
+        -Server
+    }
+
+    # Route static assets with cache headers
+    @static {
+        path /assets/* /icons/* /vendor/* *.css *.js *.png *.svg *.ico *.woff2
+    }
+    header @static Cache-Control "public, max-age=86400, stale-while-revalidate=604800"
+
+    # API and Dynamic WebSocket/HTTP requests routed to FastAPI backend
+    handle /api/* {
+        reverse_proxy fnbops-api:8100 {
+            header_up X-Forwarded-Proto {scheme}
+            header_up X-Real-IP {remote_host}
+        }
+    }
+
+    # Health check endpoint
+    handle /health* {
+        reverse_proxy fnbops-api:8100
+    }
+
+    # Dynamic PWA Web Manifest
+    handle /manifest.json {
+        reverse_proxy fnbops-api:8100
+    }
+
+    # Block sensitive files from being served statically
+    @blocked_files {
+        path *.json *.db *.db-wal *.db-shm *.lock *.env *.py *.sh *.bak *.pickle
+    }
+    handle @blocked_files {
+        respond "Access Denied" 404
+    }
+
+    # Serve Frontend PWA Static Files
+    handle {
+        root * /srv/frontend
+        file_server
+        try_files {path} {path}/ /index.html
+    }
+
+    # Logging
+    log {
+        output stdout
+        format console
+        level INFO
+    }
+}

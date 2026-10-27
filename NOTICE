@@ -1,0 +1,56 @@
+FnBOps (fnbop) - Open-Source F&B Workforce Management & Store Operations
+Copyright (C) 2026 Nguyen Dai Hoanh <hoanh@vnaigc.com>
+Commercial licensing entity: VNAIGC DRONE & TECH CO., LTD
+  (CONG TY TNHH THIET BI BAY VA CONG NGHE VNAIGC), Enterprise/Tax ID 4101699631
+Official source: https://github.com/nguyendaihoanh/fnbop
+
+This program is free software: you can redistribute it and/or modify it
+under the terms of the GNU Affero General Public License as published by
+the Free Software Foundation, version 3 only (SPDX: AGPL-3.0-only).
+The full license text is in the LICENSE file.
+
+This program is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public
+License for more details.
+
+---------------------------------------------------------------------------
+ADDITIONAL TERMS UNDER AGPL-3.0 SECTION 7
+---------------------------------------------------------------------------
+
+As permitted by Section 7 of the GNU Affero General Public License v3.0,
+the following additional terms apply to all files of this program:
+
+(b) Attribution. You must preserve, in all copies and modified versions:
+    - the copyright notices and SPDX headers in source files; and
+    - the attribution "Powered by FnBOps - Nguyen Dai Hoanh (VNAIGC)"
+      together with a link to the source repository, wherever the user
+      interface displays Appropriate Legal Notices (login screen footer,
+      dashboard footer, payslip footer, or an "About" screen).
+
+(c) Modified versions. Modified versions must be marked as changed in a
+    reasonable way (for example, a different version label and a notice
+    in the user interface), and must not misrepresent their origin or
+    claim to be the original FnBOps distribution.
+
+(e) Trademarks. This license does not grant any right to use the name
+    "FnBOps", the FnBOps logo, or the names "VNAIGC" and "Nguyen Dai Hoanh"
+    for marketing or branding a product or service, except as described
+    in TRADEMARKS.md. Accurate references (for example, "based on FnBOps")
+    are allowed.
+
+---------------------------------------------------------------------------
+COMMERCIAL LICENSE
+---------------------------------------------------------------------------
+
+If you cannot comply with AGPL-3.0-only (for example: closed-source
+distribution, hosted SaaS without publishing your modifications, OEM
+bundling, or selling under your own brand), a separate commercial license
+is available. See COMMERCIAL_LICENSE.md or contact hoanh@vnaigc.com.
+
+---------------------------------------------------------------------------
+THIRD-PARTY COMPONENTS
+---------------------------------------------------------------------------
+
+Bundled third-party components keep their own licenses. See
+THIRD_PARTY_NOTICES.md.

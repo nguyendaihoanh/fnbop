@@ -1,0 +1,117 @@
+# ==============================================================================
+# Standalone Docker Compose Stack for On-Premise F&B Operations
+# Total Memory Limit Budget: <= 250MB RAM across all 3 containers
+# (web: 40MB + backend: 150MB + zalo-gateway: 60MB = 250MB)
+# ==============================================================================
+
+services:
+  web:
+    image: nginx:1.27.1-alpine
+    container_name: cc-standalone-web
+    restart: unless-stopped
+    ports:
+      - "${STANDALONE_WEB_PORT:-8100}:80"
+    volumes:
+      - ./frontend:/var/www/fnbops:ro
+      - ./config/nginx/standalone.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./config/nginx/security.rules:/etc/nginx/conf.d/security.rules:ro
+    depends_on:
+      backend:
+        condition: service_healthy
+      zalo-gateway:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1:80/"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    mem_limit: 40m
+    mem_reservation: 16m
+    deploy:
+      resources:
+        limits:
+          memory: 40M
+        reservations:
+          memory: 16M
+    networks:
+      - standalone-net
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: cc-standalone-backend
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - ON_PREMISE_MODE=true
+      - DATA_DIR=/app/data
+      - DATABASE_PATH=/app/data/fnbop.db
+      - DATA_FILE=/app/data/data.json
+      - AUTH_FILE=/app/data/staff_auth.json
+      - APPROVALS_FILE=/app/data/shift_approvals.json
+      - ROSTER_FILE=/app/data/roster_schedule.json
+      - EVALUATIONS_FILE=/app/data/eval_logs.json
+      - ZALO_GATEWAY_URL=http://zalo-gateway:8177
+      - PORT=8100
+      - HOST=0.0.0.0
+    volumes:
+      - ./backend:/app
+      - ./data:/app/data
+    expose:
+      - "8100"
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8100/api/v1/main/ping')"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    mem_limit: 256m
+    mem_reservation: 96m
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 96M
+    networks:
+      - standalone-net
+
+  zalo-gateway:
+    build:
+      context: ./backend/zalo_gateway
+      dockerfile: Dockerfile
+    container_name: cc-standalone-zalo
+    restart: unless-stopped
+    environment:
+      - PORT=8177
+      - SESSION_DIR=/app/data/zalo_session
+      - NODE_ENV=production
+      - NODE_OPTIONS=--max-old-space-size=64
+    volumes:
+      - ./data/zalo_session:/app/data/zalo_session
+    ports:
+      - "127.0.0.1:8177:8177"
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://127.0.0.1:8177/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    mem_limit: 128m
+    mem_reservation: 48m
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+        reservations:
+          memory: 48M
+    networks:
+      - standalone-net
+
+networks:
+  standalone-net:
+    name: cc-standalone-network
+    driver: bridge

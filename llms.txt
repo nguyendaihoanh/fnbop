@@ -1,0 +1,23 @@
+# FnBOps — Developer & AI Agent Context
+
+> FnBOps is an open-source, edge-first Workforce Management (WFM), 1-Touch Attendance, Smart Shift Roster, POS Cash Closing, and Immutable Payroll OS for F&B stores and small businesses.
+
+## Key Technical Facts
+- Backend: Python 3.11+, FastAPI (:8100), Pydantic v2. Entrypoint: `backend/main.py`.
+- Primary Database: SQLite 3 in WAL mode at `data/fnbop.db` (`busy_timeout = 30000ms`, `synchronous = NORMAL`).
+- Financial Invariant: Append-only payroll ledger table `so_cai_luong`. SQLite triggers prevent `UPDATE` and `DELETE`. Adjustments require `REVERSAL` records.
+- Scheduling Algorithm: Heuristic MRV (Minimum Remaining Values) + Kuhn's Augmenting Path (BFS depth 4) + 64-bit bitmasks in `backend/services/roster_engine.py`.
+- Frontend: Vanilla ES Modules bundled with esbuild (`node frontend/build.js`). Mobile PWA (`frontend/index.html`) + Desktop Dashboard (`frontend/desktop.html`). Zero external CDN dependencies (bundled Solar Icons & Inter fonts).
+- License: GNU Affero General Public License v3.0 only (`AGPL-3.0-only`) with Section 7 terms in `NOTICE` and commercial dual-licensing in `COMMERCIAL_LICENSE.md`. Trademarks reserved in `TRADEMARKS.md`.
+
+## Key Files to Read First
+- `AGENTS.md`: Full AI agent architecture and developer guide.
+- `docs/ARCHITECTURE.md`: Database schema, sequence diagrams, and ADRs.
+- `docs/API.md`: Complete bilingual REST API v1 specification.
+- `scripts/audit_schema_contracts.py`: Comprehensive schema and contract validation gate.
+
+## Starter Accounts
+- Admin: `admin` / PIN `1234`
+- Shift Manager: `manager` / PIN `8888`
+- Barista: `phache` / PIN `2222`
+- Service Staff: `nhanvien` / PIN `1111`

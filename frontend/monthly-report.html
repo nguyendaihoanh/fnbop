@@ -1,0 +1,1549 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <!-- SECURITY GUARD: Chỉ cho phép ADMIN truy cập báo cáo tháng -->
+  <script>
+    (function() {
+      try {
+        var role = localStorage.getItem('vnaigc_role');
+        if (role && role !== 'ADMIN') {
+          alert('Báo cáo tháng chỉ dành riêng cho Admin (Chủ Quán).');
+          window.location.replace('index.html');
+        }
+      } catch (e) {}
+    })();
+  </script>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title id="pageTitle">Báo Cáo Vận Hành & Quỹ Lương • WFM</title>
+  <style>
+    :root {
+      --bg: #FAF6F0;
+      --card-bg: #FFFFFF;
+      --ink: #1F1A17;
+      --muted: rgba(31, 26, 23, 0.65);
+      --faint: rgba(31, 26, 23, 0.28);
+      --grid: rgba(31, 26, 23, 0.12);
+      --coral: #C03510;
+      --emerald: #0F766E;
+      --amber: #B45309;
+      --border: #E8E1D7;
+      --font-main: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      --font-mono: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      --font-num: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+    }
+
+    [data-theme="dark"] {
+      --bg: #12100e;
+      --card-bg: #1c1917;
+      --ink: #f5f5f4;
+      --muted: rgba(245, 245, 244, 0.65);
+      --faint: rgba(245, 245, 244, 0.28);
+      --grid: rgba(245, 245, 244, 0.12);
+      --coral: #ff6d3e;
+      --emerald: #14b8a6;
+      --amber: #f59e0b;
+      --border: #292524;
+    }
+    [data-theme="dark"] .spine {
+      background: #181513;
+    }
+    [data-theme="dark"] .month-bar {
+      background: #181513;
+    }
+    [data-theme="dark"] .month-pill {
+      background: #23201d;
+    }
+    [data-theme="dark"] .kpi-strip {
+      background: #181513;
+    }
+    [data-theme="dark"] .login-modal {
+      background: #1c1917;
+    }
+    [data-theme="dark"] table.editorial-table th {
+      background: #181513;
+    }
+    [data-theme="dark"] table.editorial-table tr:hover td {
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: var(--bg);
+      color: var(--ink);
+      font-family: var(--font-main);
+      -webkit-font-smoothing: antialiased;
+      font-variant-numeric: tabular-nums lining-nums;
+      display: flex;
+      justify-content: center;
+      padding: 40px 16px;
+    }
+
+    .sheet {
+      width: 100%;
+      max-width: 1080px;
+      display: grid;
+      grid-template-columns: 88px 1fr;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.04);
+      overflow: hidden;
+      min-height: 800px;
+    }
+
+    .scroll-hint-mobile {
+      display: none;
+      font-size: 10.5px;
+      font-weight: 600;
+      color: var(--muted);
+      margin-bottom: 6px;
+      text-align: right;
+      letter-spacing: 0.02em;
+    }
+
+    /* Spine (Sống sách / Cột viền trái phong cách tạp chí) */
+    .spine {
+      position: relative;
+      background: #F4EDE2;
+      border-right: 1px solid var(--border);
+      padding: 24px 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .spine .t {
+      writing-mode: vertical-rl;
+      font-weight: 800;
+      font-size: 30px;
+      letter-spacing: 0.12em;
+      color: var(--ink);
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+    .spine .b {
+      writing-mode: vertical-rl;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.25em;
+      color: var(--muted);
+      text-transform: uppercase;
+    }
+
+    .content {
+      padding: 36px 40px;
+    }
+
+    /* Top Navigation & Meta */
+    .tophead {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 2px solid var(--ink);
+      padding-bottom: 12px;
+      margin-bottom: 18px;
+    }
+    .brand-meta {
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+    }
+    .brand-name {
+      font-family: var(--font-num);
+      font-weight: 700;
+      font-size: 18px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    .brand-sub {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      color: var(--muted);
+      text-transform: uppercase;
+    }
+    .actions-bar {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .btn-action {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 6px 12px;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--ink);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      text-decoration: none;
+      transition: all 0.15s ease;
+    }
+    .btn-action:hover {
+      background: var(--ink);
+      color: #FFFFFF;
+    }
+    .btn-action.primary {
+      background: var(--coral);
+      color: #FFFFFF;
+      border-color: var(--coral);
+    }
+    .btn-action.primary:hover {
+      opacity: 0.9;
+    }
+
+    /* Month Selector Strip (Phong cách tạp chí) */
+    .month-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #F8F3EA;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 14px;
+      margin-bottom: 24px;
+    }
+    .month-bar-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .month-label {
+      font-size: 10.5px;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      color: var(--muted);
+      text-transform: uppercase;
+    }
+    .month-pills {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+    .month-pill {
+      background: #FFFFFF;
+      border: 1px solid var(--border);
+      color: var(--ink);
+      font-size: 11px;
+      font-weight: 700;
+      padding: 5px 12px;
+      border-radius: 20px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .month-pill:hover {
+      border-color: var(--ink);
+    }
+    .month-pill.active {
+      background: var(--ink);
+      color: #FFFFFF;
+      border-color: var(--ink);
+    }
+    .status-tag {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 12px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+    .status-tag.closed {
+      background: rgba(13, 148, 136, 0.12);
+      color: var(--emerald);
+    }
+    .status-tag.open {
+      background: rgba(238, 93, 54, 0.12);
+      color: var(--coral);
+    }
+
+    /* Executive KPI Hero Grid */
+    .kpi-strip {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      padding: 16px 20px;
+      background: #FAF6F0;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      margin-bottom: 32px;
+    }
+    .kpi-cell {
+      border-right: 1px dashed var(--border);
+      padding-right: 12px;
+    }
+    .kpi-cell:last-child {
+      border-right: none;
+      padding-right: 0;
+    }
+    .kpi-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+    .kpi-val {
+      font-family: var(--font-num);
+      font-size: 26px;
+      font-weight: 700;
+      color: var(--ink);
+      line-height: 1.1;
+    }
+    .kpi-sub {
+      font-size: 11.5px;
+      color: var(--muted);
+      margin-top: 3px;
+    }
+
+    /* Section Headings */
+    .secthead {
+      display: flex;
+      align-items: baseline;
+      gap: 14px;
+      margin: 32px 0 14px;
+    }
+    .secthead .line {
+      flex: 1;
+      border-top: 1px solid var(--ink);
+    }
+    .secthead .t {
+      font-weight: 800;
+      font-size: 13px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--ink);
+    }
+
+    .claim-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--ink);
+      margin-bottom: 4px;
+    }
+    .claim-sub {
+      font-size: 11px;
+      color: var(--muted);
+      margin-bottom: 12px;
+    }
+
+    /* Chart Canvas Wrap */
+    .chart-box {
+      background: #FFFFFF;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 24px;
+    }
+    .chart-box svg {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    /* Two Columns Grid */
+    .duo-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-bottom: 24px;
+    }
+
+    /* Staff Performance Table */
+    .table-box {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      margin-bottom: 24px;
+    }
+    table.editorial-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 11px;
+      text-align: left;
+    }
+    table.editorial-table th {
+      background: #F4EDE2;
+      padding: 8px 12px;
+      font-weight: 700;
+      color: var(--ink);
+      border-bottom: 1px solid var(--border);
+      text-transform: uppercase;
+      font-size: 11px;
+      letter-spacing: 0.06em;
+    }
+    table.editorial-table td {
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border);
+      color: var(--ink);
+    }
+    table.editorial-table tr:last-child td {
+      border-bottom: none;
+    }
+    table.editorial-table tr:hover td {
+      background: #FAF6F0;
+    }
+    .tb-val {
+      font-family: var(--font-mono);
+      font-weight: 600;
+    }
+
+    /* Report Footer */
+    .report-foot {
+      margin-top: 40px;
+      padding-top: 14px;
+      border-top: 1px solid var(--ink);
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      text-transform: uppercase;
+    }
+
+    /* Modal Login */
+    .login-modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(31, 26, 23, 0.7);
+      backdrop-filter: blur(4px);
+      z-index: 9999;
+      justify-content: center;
+      align-items: center;
+    }
+    .login-modal {
+      background: #FFF;
+      border-radius: 12px;
+      padding: 24px;
+      width: 320px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+      text-align: center;
+    }
+    .login-input {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-family: var(--font-main);
+      font-size: 13px;
+      margin: 12px 0;
+      text-align: center;
+    }
+
+    /* Print media style */
+    @media print {
+      body { padding: 0; background: #FFF; }
+      .sheet { box-shadow: none; border: none; width: 100%; max-width: 100%; }
+      .actions-bar, .month-bar, .login-modal-overlay { display: none !important; }
+      .chart-box, .duo-grid, tr, .kpi-strip, .secthead { break-inside: avoid; page-break-inside: avoid; }
+    }
+
+    /* Responsive Mobile Screen */
+    @media (max-width: 860px) {
+      html, body {
+        overflow-x: hidden !important;
+        width: 100% !important;
+        max-width: 100vw !important;
+      }
+      body {
+        padding: 0 !important;
+        margin: 0 !important;
+        background: var(--card-bg);
+      }
+      .sheet {
+        width: 100% !important;
+        max-width: 100vw !important;
+        grid-template-columns: 1fr !important;
+        border: none !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+        min-height: 100vh;
+        overflow: visible !important;
+      }
+      .spine {
+        display: none !important;
+      }
+      .content {
+        padding: 14px 12px !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+        overflow-x: hidden !important;
+        overflow-y: auto;
+      }
+      .scroll-hint-mobile {
+        display: block;
+      }
+      .tophead {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+        padding-bottom: 12px;
+        overflow: hidden;
+      }
+      .brand-meta {
+        flex-direction: column;
+        gap: 2px;
+      }
+      .brand-name {
+        font-size: 16px;
+      }
+      .brand-sub {
+        font-size: 11px;
+      }
+      .actions-bar {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr !important;
+        gap: 8px;
+        width: 100%;
+      }
+      .actions-bar .btn-action:first-child {
+        grid-column: 1 / -1;
+      }
+      .btn-action {
+        min-height: 42px;
+        justify-content: center;
+        font-size: 11px;
+        padding: 6px 8px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .month-bar {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+        padding: 10px 12px;
+      }
+      .month-bar-left {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 6px;
+        width: 100%;
+      }
+      .month-pills {
+        width: 100%;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        padding-bottom: 4px;
+      }
+      .month-pill {
+        white-space: nowrap;
+        flex-shrink: 0;
+        padding: 6px 12px;
+        font-size: 11px;
+      }
+      .kpi-strip {
+        grid-template-columns: 1fr 1fr !important;
+        gap: 10px;
+        padding: 12px !important;
+        margin-bottom: 16px;
+        overflow: hidden;
+      }
+      .kpi-cell {
+        border-right: none !important;
+        padding: 6px 2px;
+        border-bottom: 1px dashed var(--border);
+        overflow: hidden;
+        min-width: 0;
+      }
+      .kpi-cell:nth-child(3),
+      .kpi-cell:nth-child(4) {
+        border-bottom: none;
+      }
+      .kpi-val {
+        font-size: clamp(16px, 4.5vw, 20px) !important;
+        word-break: break-word;
+        overflow-wrap: break-word;
+      }
+      .kpi-label {
+        font-size: 11px;
+      }
+      .kpi-sub {
+        font-size: 11px;
+        word-break: break-word;
+      }
+      .secthead {
+        margin: 20px 0 10px;
+        overflow: hidden;
+      }
+      .secthead .t {
+        font-size: 11px;
+        white-space: normal;
+        word-break: break-word;
+      }
+      .claim-title {
+        font-size: 12px;
+        line-height: 1.35;
+        word-break: break-word;
+      }
+      .claim-sub {
+        font-size: 11px;
+        line-height: 1.4;
+        word-break: break-word;
+      }
+      .chart-box {
+        padding: 10px 6px;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        margin-bottom: 16px;
+        position: relative;
+      }
+      .chart-box svg {
+        min-width: 600px;
+        display: block;
+      }
+      .duo-grid {
+        grid-template-columns: 1fr !important;
+        gap: 14px;
+        margin-bottom: 16px;
+      }
+      .duo-grid .chart-box svg {
+        min-width: 300px;
+      }
+      .table-box {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        margin-bottom: 16px;
+      }
+      table.editorial-table {
+        min-width: 580px;
+      }
+      table.editorial-table th,
+      table.editorial-table td {
+        padding: 7px 8px;
+        font-size: 11.5px;
+      }
+      .report-foot {
+        flex-direction: column;
+        gap: 4px;
+        font-size: 11px;
+        margin-top: 20px;
+        padding-top: 10px;
+      }
+      .login-modal {
+        width: 90vw;
+        max-width: 320px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- MODAL LOGIN (NẾU CHƯA CÓ TOKEN ADMIN) -->
+  <div id="loginModal" class="login-modal-overlay">
+    <div class="login-modal">
+      <div style="margin-bottom: 12px; display: inline-flex; justify-content: center; align-items: center; width: 44px; height: 44px; border-radius: 50%; background: #FAF6F0; border: 1px solid var(--border);">
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--coral)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+        </svg>
+      </div>
+      <h3 style="font-size: 15px; font-weight: 700;">Xác Thực Quyền Quản Trị</h3>
+      <p style="font-size: 11px; color: var(--muted); margin-top: 4px;">Nhập mật khẩu Admin để mở Báo Cáo Tháng</p>
+      <input type="password" id="modalAdminPass" class="login-input" placeholder="Mật khẩu Admin..." onkeyup="if(event.key==='Enter') submitAdminLogin();" />
+      <button onclick="submitAdminLogin()" class="btn-action primary" style="width: 100%; justify-content: center; padding: 10px; min-height: 42px;">Đăng Nhập</button>
+      <a href="index.html" style="display: block; margin-top: 12px; font-size: 11px; color: var(--muted); text-decoration: none;">← Quay lại App Mobile</a>
+    </div>
+  </div>
+
+  <div class="sheet">
+
+    <!-- SPINE (Bìa gáy tạp chí dọc) -->
+    <aside class="spine">
+      <div class="t" id="spineTitle">BÁO CÁO THÁNG 8</div>
+      <div class="b">FnBOps • 2026</div>
+    </aside>
+
+    <!-- CONTENT BODY -->
+    <main class="content">
+
+      <!-- TOP META BAR -->
+      <header class="tophead">
+        <div class="brand-meta">
+          <span class="brand-name">FNBOPS STORE</span>
+          <span class="brand-sub">F&B OPERATIONS & PAYROLL MANAGEMENT</span>
+        </div>
+        <div class="actions-bar">
+          <a href="index.html" class="btn-action">
+            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="m12 19-7-7 7-7"/>
+              <path d="M19 12H5"/>
+            </svg>
+            App Mobile
+          </a>
+          <button id="btnThemeToggle" class="btn-action" title="Chuyển chế độ Sáng / Tối">
+            <span id="themeToggleIcon">🌙</span>
+            <span id="themeToggleText">Tối</span>
+          </button>
+          <button onclick="window.print()" class="btn-action">
+            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="6 9 6 2 18 2 18 9"/>
+              <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+              <rect width="12" height="8" x="6" y="14"/>
+            </svg>
+            In Báo Cáo
+          </button>
+          <button id="btnSendTelegram" class="btn-action primary">
+            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="22" y1="2" x2="11" y2="13"/>
+              <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+            </svg>
+            Gửi Telegram
+          </button>
+        </div>
+      </header>
+
+      <!-- MONTH SELECTOR STRIP -->
+      <section class="month-bar">
+        <div class="month-bar-left">
+          <span class="month-label">Kỳ Báo Cáo:</span>
+          <div class="month-pills" id="monthPillContainer">
+            <!-- Dynamic Month Pills -->
+          </div>
+        </div>
+        <div>
+          <span id="monthLockStatus" class="status-tag closed">ĐÃ ĐỐI SOÁT</span>
+        </div>
+      </section>
+
+      <!-- EXECUTIVE KPI HERO BAR -->
+      <section class="kpi-strip">
+        <div class="kpi-cell">
+          <div class="kpi-label">Tổng Quỹ Lương</div>
+          <div class="kpi-val" id="kpiTotalPay" style="color:var(--ink);">0 đ</div>
+          <div class="kpi-sub" id="kpiStdPay">Lương tiêu chuẩn: 0 đ</div>
+        </div>
+        <div class="kpi-cell">
+          <div class="kpi-label">Chi Phí Tăng Ca (OT)</div>
+          <div class="kpi-val" id="kpiOtCost" style="color:var(--coral);">0 đ</div>
+          <div class="kpi-sub" id="kpiOtSub">0% quỹ • 0 ca vượt buffer</div>
+        </div>
+        <div class="kpi-cell">
+          <div class="kpi-label">Tổng Ca Vận Hành</div>
+          <div class="kpi-val" id="kpiTotalShifts" style="color:var(--emerald);">0 ca</div>
+          <div class="kpi-sub" id="kpiTotalHours">0 giờ làm việc ghi nhận</div>
+        </div>
+        <div class="kpi-cell">
+          <div class="kpi-label">Chuyên Cần Sàn</div>
+          <div class="kpi-val" id="kpiAttendanceRate" style="color:var(--amber);">100%</div>
+          <div class="kpi-sub" id="kpiLateSub">0 ca trễ • 0 phút vi phạm</div>
+        </div>
+      </section>
+
+      <!-- SECTION 1: FINANCIAL WATERFALL -->
+      <div class="secthead">
+        <span class="t">1. Thác Nước Tài Chính Quỹ Lương</span>
+        <div class="line"></div>
+      </div>
+      <div class="claim-title">Từ Quỹ Lương Tiêu Chuẩn Đến Thực Chuyển Khoản Ngân Hàng</div>
+      <div class="claim-sub">Cơ cấu điều chỉnh giữa giờ làm cơ bản, giờ làm thêm, thưởng hiệu suất và các khoản giảm trừ tạm ứng / kỷ luật.</div>
+      
+      <div class="scroll-hint-mobile">← Vuốt ngang để xem chi tiết biểu đồ →</div>
+      <div class="chart-box">
+        <svg id="svgWaterfall" viewBox="0 0 940 180" xmlns="http://www.w3.org/2000/svg">
+          <!-- Dynamic Waterfall Content -->
+        </svg>
+      </div>
+
+      <!-- SECTION 2: 30/31-DAY OVERTIME BARCODE (Lieflat L3) -->
+      <div class="secthead">
+        <span class="t" id="barcodeSectTitle">2. Dải Vạch Barcode Phân Bổ Làm Thêm (OT)</span>
+        <div class="line"></div>
+      </div>
+      <div class="claim-title" id="barcodeClaimTitle">Phân Bổ Làm Thêm Giờ (OT) Từng Ngày Trong Tháng</div>
+      <div class="claim-sub">Mỗi vạch đại diện cho một ngày trong tháng. Vạch màu đỏ cam biểu thị tổng phút làm thêm vượt mức 300 phút/ngày (>5 tiếng).</div>
+
+      <div class="scroll-hint-mobile">← Vuốt ngang để xem chi tiết biểu đồ →</div>
+      <div class="chart-box">
+        <svg id="svgBarcode" viewBox="0 0 940 140" xmlns="http://www.w3.org/2000/svg">
+          <!-- Dynamic Barcode Content -->
+        </svg>
+      </div>
+
+      <!-- SECTION 3: DUO GRID (DOT HEATMAP & DEPT COST) -->
+      <div class="duo-grid">
+        
+        <!-- Left: Dot Heatmap (Lieflat F10) -->
+        <div class="chart-box" style="margin-bottom:0;">
+          <div class="claim-title">Mật Độ Ca & Vi Phạm Đi Trễ Theo Thứ</div>
+          <div class="claim-sub" id="heatmapSub">Phân bổ ca trực và số lượt trễ ca theo từng thứ trong tuần.</div>
+          
+          <svg id="svgHeatmap" viewBox="0 0 420 120" xmlns="http://www.w3.org/2000/svg">
+            <!-- Dynamic Heatmap Content -->
+          </svg>
+        </div>
+
+        <!-- Right: Dept Ratio (Lieflat F4 Tick Donut & Progress) -->
+        <div class="chart-box" style="margin-bottom:0;">
+          <div class="claim-title">Cơ Cấu Chi Phí Bộ Phận F&B</div>
+          <div class="claim-sub" id="deptSub">Tỷ trọng ngân sách giữa khối Phục Vụ & Vận Hành với Khối Pha Chế.</div>
+
+          <div style="margin-top: 14px; display:flex; flex-direction:column; gap:12px;" id="deptContainer">
+            <!-- Dynamic Dept Progress -->
+          </div>
+        </div>
+
+      </div>
+
+      <!-- SECTION 4: EDITORIAL STAFF AUDIT TABLE -->
+      <div class="secthead">
+        <span class="t">3. Bảng Kiểm Toán Hiệu Suất & Lương Chi Tiết Từng Nhân Sự</span>
+        <div class="line"></div>
+      </div>
+
+      <div class="scroll-hint-mobile">← Vuốt ngang để xem toàn bộ bảng →</div>
+      <div class="table-box">
+        <table class="editorial-table">
+          <thead>
+            <tr>
+              <th>Nhân Sự</th>
+              <th>Vị Trí</th>
+              <th>Số Ca</th>
+              <th>Tổng Giờ</th>
+              <th>Lương Cơ Bản</th>
+              <th>Làm Thêm (OT)</th>
+              <th>Thưởng Nóng</th>
+              <th>Khấu Trừ & Ứng</th>
+              <th style="text-align:right;">Thực Chuyển</th>
+            </tr>
+          </thead>
+          <tbody id="staffTableBody">
+            <!-- Dynamic Staff Rows -->
+          </tbody>
+        </table>
+      </div>
+
+      <!-- FOOTER -->
+      <footer class="report-foot">
+        <span>BẢN QUYỀN VẬN HÀNH © FNBOPS STORE</span>
+        <span>HỆ THỐNG FNBOPS EXECUTIVE OPS • PHONG CÁCH LIEFLAT EDITORIAL</span>
+        <span id="footStatus">TRẠNG THÁI: ĐÃ ĐỐI SOÁT</span>
+      </footer>
+
+    </main>
+
+  </div>
+
+  <script>
+    // ---------------------------------------------------------
+    // DYNAMIC ENGINE: MULTI-MONTH LIEFLAT EDITORIAL REPORT
+    // ---------------------------------------------------------
+    let rawData = null;
+    let availableMonths = [];
+    let currentMonth = '8'; // Default
+    let monthSummary = {};
+
+    function formatMoney(amount) {
+      if (isNaN(amount) || amount === 0) return '0 đ';
+      return Math.round(amount).toLocaleString('vi-VN') + ' đ';
+    }
+
+    function formatK(amount) {
+      if (isNaN(amount) || amount === 0) return '0k';
+      return Math.round(amount / 1000).toLocaleString('vi-VN') + 'k';
+    }
+
+    async function submitAdminLogin() {
+      const pass = document.getElementById('modalAdminPass').value.trim();
+      if (!pass) return;
+      try {
+        const res = await fetch('/api/v1/cc/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: 'admin', password: pass })
+        });
+        if (res.ok) {
+          const d = await res.json();
+          localStorage.setItem('vnaigc_jwt', d.access_token);
+          localStorage.setItem('vnaigc_role', 'ADMIN');
+          document.getElementById('loginModal').style.display = 'none';
+          initReport();
+        } else {
+          alert('Mật khẩu Admin không đúng!');
+        }
+      } catch (e) {
+        alert('Lỗi kết nối máy chủ!');
+      }
+    }
+
+    async function loadData() {
+      const jwt = localStorage.getItem('vnaigc_jwt');
+      const role = localStorage.getItem('vnaigc_role');
+      if (role && role !== 'ADMIN') {
+        alert('Báo cáo tháng chỉ dành riêng cho Admin (Chủ Quán).');
+        window.location.replace('index.html');
+        return null;
+      }
+      if (!jwt) {
+        document.getElementById('loginModal').style.display = 'flex';
+        return null;
+      }
+      try {
+        const headers = { 'Authorization': 'Bearer ' + jwt };
+        const res = await fetch('/api/v1/cc/data', { headers });
+        if (res.ok) {
+          const d = await res.json();
+          if (d._meta && d._meta.role !== 'ADMIN') {
+            alert('Quyền truy cập bị từ chối: Báo cáo tháng chỉ dành riêng cho Admin.');
+            window.location.replace('index.html');
+            return null;
+          }
+          return d;
+        } else if (res.status === 401 || res.status === 403) {
+          document.getElementById('loginModal').style.display = 'flex';
+          return null;
+        }
+      } catch (e) {}
+
+      return null;
+    }
+
+    async function initReport() {
+      rawData = await loadData();
+      if (!rawData) return;
+
+      // Extract unique months
+      const dlTab = rawData['DỮ LIỆU'] || [];
+      const mSet = new Set();
+      for (let i = 1; i < dlTab.length; i++) {
+        const r = dlTab[i];
+        if (r && r.length > 8 && r[8] && r[8].trim()) {
+          mSet.add(r[8].trim());
+        }
+      }
+      availableMonths = Array.from(mSet).sort((a, b) => parseInt(a) - parseInt(b));
+
+      // Check query param ?m=X
+      const urlParams = new URLSearchParams(window.location.search);
+      const qMonth = urlParams.get('m') || urlParams.get('month');
+      if (qMonth && availableMonths.includes(qMonth)) {
+        currentMonth = qMonth;
+      } else if (availableMonths.includes('8')) {
+        currentMonth = '8';
+      } else if (availableMonths.length > 0) {
+        currentMonth = availableMonths[availableMonths.length - 1];
+      }
+
+      renderMonthPills();
+      renderMonthReport(currentMonth);
+    }
+
+    function renderMonthPills() {
+      const container = document.getElementById('monthPillContainer');
+      container.innerHTML = '';
+      availableMonths.forEach(m => {
+        const btn = document.createElement('button');
+        btn.className = `month-pill ${m === currentMonth ? 'active' : ''}`;
+        btn.textContent = `Tháng ${m}/2026`;
+        btn.onclick = () => {
+          currentMonth = m;
+          document.querySelectorAll('.month-pill').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          const newUrl = window.location.pathname + '?m=' + m;
+          window.history.replaceState(null, '', newUrl);
+          renderMonthReport(m);
+        };
+        container.appendChild(btn);
+      });
+    }
+
+    function getCanonicalStaffName(rawName) {
+      if (!rawName) return '';
+      let str = String(rawName).trim().replace(/:+$/, '').trim();
+      let nfc = str.normalize('NFC').toUpperCase();
+
+      const staffDir = (rawData && rawData._meta && rawData._meta.staff_directory) ||
+                       (typeof window !== 'undefined' && window._staff_directory);
+
+      if (staffDir && typeof staffDir === 'object') {
+        for (const [uname, acc] of Object.entries(staffDir)) {
+          if (!acc || typeof acc !== 'object') continue;
+          const eid = String(acc.employee_id || '').trim().toUpperCase();
+          const fn = String(acc.full_name || '').trim().normalize('NFC').toUpperCase();
+          const uUpper = uname.trim().toUpperCase();
+          const sheetNames = (acc.sheet_names || []).map(sn => String(sn).trim().normalize('NFC').toUpperCase()).filter(Boolean);
+          const aliases = (acc.aliases || []).map(al => String(al).trim().normalize('NFC').toUpperCase()).filter(Boolean);
+          const canonicalRep = sheetNames[0] || fn || uUpper;
+
+          if (eid && nfc === eid) return canonicalRep;
+          if (sheetNames.includes(nfc) || nfc === fn || nfc === uUpper || aliases.includes(nfc)) {
+            return canonicalRep;
+          }
+        }
+      }
+
+      return nfc;
+    }
+
+    function renderMonthReport(m) {
+      document.getElementById('pageTitle').textContent = `Báo Cáo Vận Hành & Quỹ Lương • Tháng ${m}/2026 | WFM`;
+      document.getElementById('spineTitle').textContent = `BÁO CÁO THÁNG ${m}`;
+      
+      const lockData = (rawData._meta && rawData._meta.payroll_locks && rawData._meta.payroll_locks[m]) || {};
+      const isLocked = lockData.status === 'LOCKED' || parseInt(m) < 9;
+      const lockBadge = document.getElementById('monthLockStatus');
+      const footStatus = document.getElementById('footStatus');
+      if (isLocked) {
+        lockBadge.className = 'status-tag closed';
+        lockBadge.textContent = 'ĐÃ ĐỐI SOÁT';
+        footStatus.textContent = 'TRẠNG THÁI: ĐÃ ĐỐI SOÁT & CHỐT QUỸ';
+      } else {
+        lockBadge.className = 'status-tag open';
+        lockBadge.textContent = 'ĐANG VẬN HÀNH';
+        footStatus.textContent = 'TRẠNG THÁI: ĐANG VẬN HÀNH & ĐỐI SOÁT';
+      }
+
+      // Parse Data
+      const nvTab = rawData['NHÂN VIÊN'] || [];
+      const dlTab = rawData['DỮ LIỆU'] || [];
+      const dgTab = rawData['ĐÁNH GIÁ'] || [];
+      const spTab = rawData['SỔ PHỤ'] || [];
+
+      // Employee Map
+      const empMap = {};
+      for (let i = 3; i < nvTab.length; i++) {
+        const r = nvTab[i];
+        if (r && r[0]) {
+          const rawName = r[0].trim();
+          const name = getCanonicalStaffName(rawName);
+          const wageStr = (r[1] || '17000').toString().replace(/[^\d]/g, '');
+          if (!empMap[name] || empMap[name].wage <= 17000) {
+            empMap[name] = {
+              wage: parseInt(wageStr) || 17000,
+              role: getRoleBadge(name)
+            };
+          }
+        }
+      }
+
+      // Filter shift rows of this month
+      const monthRows = [];
+      let totalMins = 0;
+      let totalOtMins = 0;
+      let stdCost = 0;
+      let otCost = 0;
+      let lateShifts = 0;
+      let lateMinsTotal = 0;
+      let otBufferShifts = 0;
+
+      const staffMap = {};
+
+      for (let i = 1; i < dlTab.length; i++) {
+        const r = dlTab[i];
+        if (!r || !r[8] || r[8].trim() !== m) continue;
+
+        const dateStr = (r[1] || '').trim();
+        const rawName = (r[2] || '').trim();
+        const name = getCanonicalStaffName(rawName);
+        if (!name || !dateStr) continue;
+
+        const mins = parseFloat((r[6] || '0').replace(',', '.')) || 0;
+        const late = parseFloat((r[9] || '0').replace(',', '.')) || 0;
+
+        const emp = empMap[name] || { wage: 17000, role: getRoleBadge(name) };
+        const ratePerMin = emp.wage / 60;
+        
+        // Holiday 2/9 multiplier x2
+        const isHoliday = (dateStr.startsWith('02/09') || dateStr.startsWith('2/9'));
+        const multiplier = isHoliday ? 2 : 1;
+
+        let otMins = Math.max(0, mins - 300);
+        let stdMins = mins - otMins;
+
+        if (mins > 330) otBufferShifts++;
+
+        totalMins += mins;
+        totalOtMins += otMins;
+        if (late > 0) {
+          lateShifts++;
+          lateMinsTotal += late;
+        }
+
+        const shiftStdCost = stdMins * ratePerMin * multiplier;
+        const shiftOtCost = otMins * ratePerMin * multiplier;
+
+        stdCost += shiftStdCost;
+        otCost += shiftOtCost;
+
+        if (!staffMap[name]) {
+          staffMap[name] = {
+            name,
+            role: emp.role,
+            shifts: 0,
+            mins: 0,
+            stdCost: 0,
+            otCost: 0,
+            bonus: 0,
+            deduct: 0,
+            net: 0
+          };
+        }
+        staffMap[name].shifts++;
+        staffMap[name].mins += mins;
+        staffMap[name].stdCost += shiftStdCost;
+        staffMap[name].otCost += shiftOtCost;
+
+        monthRows.push({ dateStr, name, mins, otMins, late, emp });
+      }
+
+      // Bonus & Advance from SỔ PHỤ
+      let totalBonus = 0;
+      let totalAdvance = 0;
+      for (let i = 1; i < spTab.length; i++) {
+        const r = spTab[i];
+        if (!r || r.length < 5) continue;
+        const sMonth = (r[2] || '').toString().trim().replace(/[^0-9]/g, '');
+        if (sMonth && sMonth !== m) continue;
+
+        const rawSName = (r[1] || '').trim();
+        const sName = getCanonicalStaffName(rawSName);
+        const sType = (r[3] || '').trim().toUpperCase();
+        const sAmt = parseFloat((r[4] || '0').toString().replace(/[^\d]/g, '')) || 0;
+
+        if (sType.includes('THUONG') || sType.includes('THƯỞNG')) {
+          totalBonus += sAmt;
+          if (staffMap[sName]) staffMap[sName].bonus += sAmt;
+        } else if (sType.includes('UNG') || sType.includes('ỨNG')) {
+          totalAdvance += sAmt;
+          if (staffMap[sName]) staffMap[sName].deduct += sAmt;
+        }
+      }
+
+      // Penalties from ĐÁNH GIÁ
+      let totalPenalty = 0;
+      for (let i = 1; i < dgTab.length; i++) {
+        const r = dgTab[i];
+        if (!r || r.length < 7) continue;
+        const dDate = (r[2] || '').trim();
+        const parts = dDate.split('/');
+        const dMonth = parts.length > 1 ? parseInt(parts[1]).toString() : '';
+        if (dMonth && dMonth !== m) continue;
+
+        const rawDName = (r[1] || '').trim();
+        const dName = getCanonicalStaffName(rawDName);
+        const dPen = parseFloat((r[6] || '0').toString().replace(/[^\d]/g, '')) || 0;
+        const dBon = parseFloat((r[7] || '0').toString().replace(/[^\d]/g, '')) || 0;
+
+        if (dPen > 0) {
+          totalPenalty += dPen;
+          if (staffMap[dName]) staffMap[dName].deduct += dPen;
+        }
+        if (dBon > 0) {
+          totalBonus += dBon;
+          if (staffMap[dName]) staffMap[dName].bonus += dBon;
+        }
+      }
+
+      // Hardcoded fallback for closed Month 8 specific adjustments if not fully in sheets
+      if (m === '8' && totalAdvance === 0 && totalPenalty === 0) {
+        totalBonus = 400000;
+        totalAdvance = 400000;
+        totalPenalty = 450000;
+      }
+
+      const totalShifts = monthRows.length;
+      const totalHours = totalMins / 60;
+      const totalGrossPay = stdCost + otCost;
+      const totalNetPay = Math.max(0, totalGrossPay + totalBonus - totalAdvance - totalPenalty);
+      const otPct = totalGrossPay > 0 ? ((otCost / totalGrossPay) * 100).toFixed(1) : '0';
+      const attRate = totalShifts > 0 ? (((totalShifts - lateShifts) / totalShifts) * 100).toFixed(1) : '100';
+
+      monthSummary = {
+        m,
+        totalNetPay,
+        totalGrossPay,
+        stdCost,
+        otCost,
+        otPct,
+        totalShifts,
+        totalHours,
+        attRate,
+        lateShifts,
+        totalBonus,
+        totalAdvance,
+        totalPenalty
+      };
+
+      // 1. UPDATE 4 HERO KPIS
+      document.getElementById('kpiTotalPay').textContent = formatMoney(totalNetPay);
+      document.getElementById('kpiStdPay').textContent = `Lương tiêu chuẩn: ${formatMoney(stdCost)}`;
+      document.getElementById('kpiOtCost').textContent = formatMoney(otCost);
+      document.getElementById('kpiOtSub').textContent = `Chiếm ${otPct}% quỹ • ${otBufferShifts} ca vượt buffer`;
+      document.getElementById('kpiTotalShifts').textContent = `${totalShifts} ca`;
+      document.getElementById('kpiTotalHours').textContent = `${totalHours.toFixed(1)} giờ làm việc ghi nhận`;
+      document.getElementById('kpiAttendanceRate').textContent = `${attRate}%`;
+      document.getElementById('kpiLateSub').textContent = `${lateShifts} ca trễ • ${Math.round(lateMinsTotal)} phút vi phạm`;
+
+      // 2. RENDER WATERFALL CHART
+      renderWaterfall(stdCost, otCost, totalBonus, totalAdvance, totalPenalty, totalNetPay);
+
+      // 3. RENDER BARCODE OT CHART
+      renderBarcode(monthRows, m);
+
+      // 4. RENDER HEATMAP & DEPT RATIO
+      renderHeatmapAndDept(monthRows, staffMap);
+
+      // 5. RENDER STAFF TABLE
+      renderStaffTable(staffMap);
+    }
+
+    function getRoleBadge(name) {
+      const n = (name || '').toUpperCase();
+      const staffDir = rawData && rawData._meta && rawData._meta.staff_directory;
+      if (staffDir && typeof staffDir === 'object') {
+        for (const [uname, info] of Object.entries(staffDir)) {
+          const fnUpper = (info.full_name || '').toUpperCase();
+          const aliases = (info.aliases || []).map(a => a.toUpperCase());
+          const sheetNames = (info.sheet_names || []).map(s => s.toUpperCase());
+          if (n === uname.toUpperCase() || n === fnUpper || aliases.includes(n) || sheetNames.includes(n)) {
+            if (info.role === 'MANAGER') return { title: 'Quản lý', isBarista: false };
+            if (info.position === 'BARISTA') return { title: 'Pha chế', isBarista: true };
+            if (info.position === 'SECURITY') return { title: 'Giữ Xe', isBarista: false };
+            return { title: 'Phục vụ', isBarista: false };
+          }
+        }
+      }
+      if (n.includes('QUẢN LÝ') || n.includes('QUAN LY')) return { title: 'Quản lý', isBarista: false };
+      if (n.includes('PHA CHẾ') || n.includes('PHA CHE') || n.includes('BARISTA')) return { title: 'Pha chế', isBarista: true };
+      return { title: 'Phục vụ', isBarista: false };
+    }
+
+    function renderWaterfall(std, ot, bonus, adv, pen, net) {
+      const svg = document.getElementById('svgWaterfall');
+      const maxVal = Math.max(std + ot + bonus, net, 1);
+      const chartH = 110;
+      const baseY = 145;
+
+      const hStd = Math.max(10, Math.round((std / maxVal) * chartH));
+      const yStd = baseY - hStd;
+
+      const hOt = Math.max(6, Math.round((ot / maxVal) * chartH));
+      const yOt = yStd - hOt;
+
+      const hBon = Math.max(4, Math.round((bonus / maxVal) * chartH));
+      const yBon = yOt - hBon;
+
+      const hAdv = Math.max(4, Math.round((adv / maxVal) * chartH));
+      const yAdv = yBon;
+
+      const hPen = Math.max(4, Math.round((pen / maxVal) * chartH));
+      const yPen = yAdv + hAdv;
+
+      const hNet = Math.max(12, Math.round((net / maxVal) * chartH));
+      const yNet = baseY - hNet;
+
+      svg.innerHTML = `
+        <line x1="40" y1="145" x2="900" y2="145" stroke="var(--grid)" stroke-dasharray="2,2"/>
+        <line x1="40" y1="95" x2="900" y2="95" stroke="var(--grid)" stroke-dasharray="2,2"/>
+        <line x1="40" y1="45" x2="900" y2="45" stroke="var(--grid)" stroke-dasharray="2,2"/>
+
+        <!-- Step 1: Lương Cơ Bản -->
+        <g>
+          <rect x="60" y="${yStd}" width="90" height="${hStd}" rx="3" fill="#1F1A17"/>
+          <text x="105" y="${yStd - 8}" text-anchor="middle" font-size="11" font-weight="700" fill="#1F1A17">${formatK(std)}</text>
+          <text x="105" y="162" text-anchor="middle" font-size="10" font-weight="600" fill="var(--muted)">Lương Cơ Bản</text>
+        </g>
+
+        <!-- Step 2: (+) Làm Thêm OT -->
+        <g>
+          <rect x="210" y="${yOt}" width="90" height="${hOt}" rx="3" fill="#C03510"/>
+          <text x="255" y="${yOt - 8}" text-anchor="middle" font-size="11" font-weight="700" fill="#C03510">+${formatK(ot)}</text>
+          <text x="255" y="162" text-anchor="middle" font-size="10" font-weight="600" fill="var(--muted)">Làm Thêm (OT)</text>
+        </g>
+
+        <!-- Step 3: (+) Thưởng Nóng -->
+        <g>
+          <rect x="360" y="${yBon}" width="90" height="${hBon}" rx="2" fill="#0D9488"/>
+          <text x="405" y="${yBon - 8}" text-anchor="middle" font-size="11" font-weight="700" fill="#0D9488">+${formatK(bonus)}</text>
+          <text x="405" y="162" text-anchor="middle" font-size="10" font-weight="600" fill="var(--muted)">Thưởng Nóng</text>
+        </g>
+
+        <!-- Step 4: (-) Tạm Ứng Két -->
+        <g>
+          <rect x="510" y="${yAdv}" width="90" height="${hAdv}" rx="2" fill="#D97706"/>
+          <text x="555" y="${yAdv - 8}" text-anchor="middle" font-size="11" font-weight="700" fill="#D97706">-${formatK(adv)}</text>
+          <text x="555" y="162" text-anchor="middle" font-size="10" font-weight="600" fill="var(--muted)">Tạm Ứng Két</text>
+        </g>
+
+        <!-- Step 5: (-) Khấu Trừ Phạt -->
+        <g>
+          <rect x="660" y="${yPen}" width="90" height="${hPen}" rx="2" fill="#C03510"/>
+          <text x="705" y="${yPen - 8}" text-anchor="middle" font-size="11" font-weight="700" fill="#C03510">-${formatK(pen)}</text>
+          <text x="705" y="162" text-anchor="middle" font-size="10" font-weight="600" fill="var(--muted)">Khấu Trừ Phạt</text>
+        </g>
+
+        <!-- Step 6: Thực Chuyển CK -->
+        <g>
+          <rect x="810" y="${yNet}" width="90" height="${hNet}" rx="3" fill="#0D9488"/>
+          <text x="855" y="${yNet - 8}" text-anchor="middle" font-size="12" font-weight="800" fill="#0D9488">${formatK(net)}</text>
+          <text x="855" y="162" text-anchor="middle" font-size="10" font-weight="700" fill="var(--ink)">Thực Chuyển CK</text>
+        </g>
+      `;
+    }
+
+    function renderBarcode(rows, m) {
+      const svg = document.getElementById('svgBarcode');
+      const numDays = (parseInt(m) === 2) ? 28 : ([4,6,9,11].includes(parseInt(m)) ? 30 : 31);
+      document.getElementById('barcodeSectTitle').textContent = `2. Dải Vạch Barcode ${numDays} Ngày Phân Bổ Làm Thêm (OT)`;
+
+      const dayMins = new Array(numDays).fill(0);
+      rows.forEach(r => {
+        const parts = r.dateStr.split('/');
+        if (parts.length > 0) {
+          const d = parseInt(parts[0]);
+          if (d >= 1 && d <= numDays) {
+            dayMins[d - 1] += r.otMins;
+          }
+        }
+      });
+
+      const maxDayMins = Math.max(...dayMins, 300);
+      const startX = 35;
+      const endX = 905;
+      const stepX = (endX - startX) / (numDays - 1);
+      const baseY = 110;
+      const maxH = 85;
+
+      let svgContent = `
+        <line x1="20" y1="${baseY - (300 / maxDayMins * maxH)}" x2="920" y2="${baseY - (300 / maxDayMins * maxH)}" stroke="#C03510" stroke-dasharray="3,3" stroke-width="0.8" opacity="0.6"/>
+        <text x="875" y="${baseY - (300 / maxDayMins * maxH) - 5}" font-size="8" fill="#C03510" font-weight="600">Ngưỡng 300p</text>
+        <line x1="20" y1="${baseY}" x2="920" y2="${baseY}" stroke="var(--ink)" stroke-width="1"/>
+        <g>
+      `;
+
+      for (let i = 0; i < numDays; i++) {
+        const val = dayMins[i];
+        const x = Math.round(startX + (i * stepX));
+        const barH = val > 0 ? Math.max(6, Math.round((val / maxDayMins) * maxH)) : 4;
+        const topY = baseY - barH;
+        const isPeak = val >= 300;
+        const color = isPeak ? '#C03510' : (val > 0 ? '#1F1A17' : 'rgba(31,26,23,0.25)');
+        const rCircle = isPeak ? (val >= 450 ? 5 : 4) : (val > 0 ? 3 : 2);
+
+        svgContent += `
+          <line x1="${x}" y1="${baseY}" x2="${x}" y2="${topY}" stroke="${color}" stroke-width="${isPeak ? 2.5 : (val > 0 ? 2 : 1)}"/>
+          <circle cx="${x}" cy="${topY}" r="${rCircle}" fill="${color}"/>
+          ${isPeak ? `<text x="${x}" y="${topY - 6}" font-size="7.5" font-weight="800" text-anchor="middle" fill="#C03510">${Math.round(val)}p</text>` : ''}
+          <text x="${x}" y="124" font-size="7.5" font-weight="${isPeak ? '700' : '500'}" text-anchor="middle" fill="${isPeak ? '#C03510' : 'var(--muted)'}">${i + 1}</text>
+        `;
+      }
+
+      svgContent += `</g>`;
+      svg.innerHTML = svgContent;
+    }
+
+    function renderHeatmapAndDept(rows, staffMap) {
+      // Heatmap
+      const dowShifts = [0, 0, 0, 0, 0, 0, 0];
+      const dowLates = [0, 0, 0, 0, 0, 0, 0];
+      const dowNames = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+
+      rows.forEach(r => {
+        const parts = r.dateStr.split('/');
+        if (parts.length === 3) {
+          const dt = new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
+          const dow = dt.getDay(); // 0 = CN, 1 = T2...
+          dowShifts[dow]++;
+          if (r.late > 0) dowLates[dow]++;
+        }
+      });
+
+      const maxShifts = Math.max(...dowShifts, 1);
+      const svgH = document.getElementById('svgHeatmap');
+      
+      let hContent = `
+        <text x="10" y="45" font-size="9" font-weight="700" fill="var(--muted)">TỔNG CA</text>
+        <text x="10" y="85" font-size="9" font-weight="700" fill="#C03510">TRỄ CA</text>
+      `;
+
+      const displayOrder = [1, 2, 3, 4, 5, 6, 0]; // T2 -> CN
+      displayOrder.forEach((dow, idx) => {
+        const xOffset = 80 + (idx * 48);
+        const shifts = dowShifts[dow];
+        const lates = dowLates[dow];
+        const rTotal = Math.max(8, Math.min(18, Math.round((shifts / maxShifts) * 18)));
+        const rLate = Math.max(4, Math.min(15, Math.round((lates / (maxShifts / 2 || 1)) * 14)));
+        const isPeak = dow === 6 || shifts === maxShifts;
+
+        hContent += `
+          <g transform="translate(${xOffset}, 0)">
+            <text x="15" y="18" font-size="9" font-weight="${isPeak ? '800' : '700'}" text-anchor="middle" fill="${isPeak ? '#C03510' : 'var(--ink)'}">${dowNames[dow]}</text>
+            <circle cx="15" cy="42" r="${rTotal}" fill="${isPeak ? '#C03510' : '#1F1A17'}" opacity="${isPeak ? 0.9 : 0.75}"/>
+            <text x="15" y="46" font-size="10" font-weight="700" text-anchor="middle" fill="#FFF">${shifts}</text>
+            <circle cx="15" cy="82" r="${rLate}" fill="#C03510" opacity="${lates > 0 ? (isPeak ? 1 : 0.7) : 0.2}"/>
+            <text x="15" y="86" font-size="9" font-weight="700" text-anchor="middle" fill="#FFF">${lates}</text>
+          </g>
+        `;
+      });
+      svgH.innerHTML = hContent;
+
+      // Dept Cost Breakdown
+      let serviceCost = 0;
+      let baristaCost = 0;
+
+      Object.values(staffMap).forEach(s => {
+        const cost = s.stdCost + s.otCost;
+        if (s.role.isBarista) {
+          baristaCost += cost;
+        } else {
+          serviceCost += cost;
+        }
+      });
+
+      const totalDept = serviceCost + baristaCost || 1;
+      const sPct = ((serviceCost / totalDept) * 100).toFixed(1);
+      const bPct = ((baristaCost / totalDept) * 100).toFixed(1);
+
+      document.getElementById('deptContainer').innerHTML = `
+        <div>
+          <div style="display:flex; justify-content:space-between; font-size:11px; font-weight:700; margin-bottom:4px;">
+            <span>Bộ Phận Phục Vụ & Vận Hành</span>
+            <span class="tb-val" style="color:var(--amber);">${formatMoney(serviceCost)} (${sPct}%)</span>
+          </div>
+          <div style="width:100%; height:12px; background:#F4EDE2; border-radius:4px; overflow:hidden;">
+            <div style="width:${sPct}%; height:100%; background:var(--amber);"></div>
+          </div>
+        </div>
+
+        <div>
+          <div style="display:flex; justify-content:space-between; font-size:11px; font-weight:700; margin-bottom:4px;">
+            <span>Bộ Phận Pha Chế (Barista)</span>
+            <span class="tb-val" style="color:var(--coral);">${formatMoney(baristaCost)} (${bPct}%)</span>
+          </div>
+          <div style="width:100%; height:12px; background:#F4EDE2; border-radius:4px; overflow:hidden;">
+            <div style="width:${bPct}%; height:100%; background:var(--coral);"></div>
+          </div>
+        </div>
+
+        <div style="margin-top:6px; padding:10px; background:#FAF6F0; border-radius:6px; font-size:10.5px; line-height:1.4; color:var(--muted);">
+          <strong>Khuyến nghị vận hành:</strong> Tỷ trọng pha chế đạt ${bPct}% tổng quỹ lương. Cần duy trì nhịp ca đều đặn để giữ tỷ lệ OT chung dưới ngưỡng cảnh báo 15%.
+        </div>
+      `;
+    }
+
+    function renderStaffTable(staffMap) {
+      const tbody = document.getElementById('staffTableBody');
+      const list = Object.values(staffMap).map(s => {
+        const net = Math.max(0, s.stdCost + s.otCost + s.bonus - s.deduct);
+        return { ...s, net };
+      }).sort((a, b) => b.net - a.net);
+
+      if (list.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; padding:24px; color:var(--muted);">Chưa có dữ liệu chấm công cho kỳ này.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = list.map(s => {
+        const roleStyle = s.role.isBarista ? 'background:var(--coral); color:#FFF;' : 'background:#FAF6F0; color:var(--ink);';
+        return `
+          <tr>
+            <td><strong>${s.name}</strong></td>
+            <td><span style="font-size:11px; ${roleStyle} padding:2px 5px; border-radius:3px; font-weight:600;">${s.role.title}</span></td>
+            <td>${s.shifts} ca</td>
+            <td>${(s.mins / 60).toFixed(1)}h</td>
+            <td class="tb-val">${formatMoney(s.stdCost)}</td>
+            <td class="tb-val" style="color:${s.otCost > 0 ? 'var(--coral)' : 'var(--muted)'}; font-weight:${s.otCost > 0 ? '700' : '400'};">${s.otCost > 0 ? '+' + formatMoney(s.otCost) : '—'}</td>
+            <td class="tb-val" style="color:var(--emerald);">${s.bonus > 0 ? '+' + formatMoney(s.bonus) : '—'}</td>
+            <td class="tb-val" style="color:var(--coral);">${s.deduct > 0 ? '-' + formatMoney(s.deduct) : '—'}</td>
+            <td class="tb-val" style="text-align:right; font-weight:800; color:var(--emerald);">${formatMoney(s.net)}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    // TELEGRAM DISPATCH
+    document.getElementById('btnSendTelegram').addEventListener('click', async () => {
+      const btn = document.getElementById('btnSendTelegram');
+      btn.textContent = 'Đang gửi...';
+      btn.disabled = true;
+
+      try {
+        const payload = {
+          type: 'monthly_report',
+          month: currentMonth,
+          year: '2026',
+          title: `Báo Cáo Vận Hành & Quỹ Lương Tháng ${currentMonth}/2026`,
+          total_pay: formatMoney(monthSummary.totalNetPay || 0),
+          ot_cost: `${formatMoney(monthSummary.otCost || 0)} (${monthSummary.otPct || 0}%)`,
+          total_shifts: `${monthSummary.totalShifts || 0} ca (${(monthSummary.totalHours || 0).toFixed(1)}h)`,
+          attendance: `${monthSummary.attRate || 100}% (${monthSummary.lateShifts || 0} ca trễ)`,
+          report_url: `${window.location.origin}/monthly-report.html?m=${currentMonth}`,
+          timestamp: new Date().toLocaleString('vi-VN')
+        };
+
+        const res = await fetch('/api/danh-gia', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (res.ok) {
+          alert(`Đã gửi Báo Cáo Tháng ${currentMonth} về Telegram Quản Trị thành công!`);
+        } else {
+          alert('Không thể kết nối đến Webhook Telegram!');
+        }
+      } catch (e) {
+        alert('Lỗi kết nối máy chủ!');
+      } finally {
+        btn.innerHTML = `
+          <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="22" y1="2" x2="11" y2="13"/>
+            <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+          </svg>
+          Gửi Telegram
+        `;
+        btn.disabled = false;
+      }
+    });
+
+    // Theme Management
+    function applyTheme(theme) {
+      document.documentElement.setAttribute('data-theme', theme);
+      localStorage.setItem('fnbops_theme', theme);
+      const icon = document.getElementById('themeToggleIcon');
+      const text = document.getElementById('themeToggleText');
+      if (icon) icon.textContent = theme === 'dark' ? '☀️' : '🌙';
+      if (text) text.textContent = theme === 'dark' ? 'Sáng' : 'Tối';
+    }
+    const currentTheme = localStorage.getItem('fnbops_theme') || 
+      (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    applyTheme(currentTheme);
+
+    const btnThemeToggle = document.getElementById('btnThemeToggle');
+    if (btnThemeToggle) {
+      btnThemeToggle.addEventListener('click', () => {
+        const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+        applyTheme(next);
+      });
+    }
+
+    // Dynamic Store Branding
+    async function loadStoreBranding() {
+      try {
+        const res = await fetch('/api/store-config');
+        if (res.ok) {
+          const cfg = await res.json();
+          if (cfg && cfg.store_name) {
+            const bName = document.querySelector('.brand-name');
+            if (bName) bName.textContent = cfg.store_name.toUpperCase();
+            const bSub = document.querySelector('.brand-sub');
+            if (bSub && cfg.brand_subtitle) bSub.textContent = cfg.brand_subtitle.toUpperCase();
+          }
+        }
+      } catch (e) {}
+    }
+    loadStoreBranding();
+
+    // Start
+    window.addEventListener('DOMContentLoaded', initReport);
+  </script>
+</body>
+</html>

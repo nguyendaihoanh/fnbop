@@ -1,0 +1,38 @@
+[
+  {
+    "id": "EVAL_1792217234_8751",
+    "staffName": "Nhân Viên",
+    "date": "2026-10-15",
+    "shift": "Ca Sáng",
+    "type": "Thưởng",
+    "amount": 100000,
+    "reason": "Chăm chỉ hỗ trợ đông khách",
+    "notes": "",
+    "ratings": {},
+    "redFlags": [],
+    "createdBy": "manager",
+    "createdByName": "Quản Lý Ca",
+    "createdByRole": "MANAGER",
+    "createdAt": "2026-10-15T10:30:00",
+    "status": "APPROVED",
+    "month": "10"
+  },
+  {
+    "id": "EVAL_1792217234_8752",
+    "staffName": "Pha Chế",
+    "date": "2026-10-16",
+    "shift": "Ca Chiều",
+    "type": "Thưởng",
+    "amount": 50000,
+    "reason": "Pha chế xuất sắc giờ cao điểm",
+    "notes": "",
+    "ratings": {},
+    "redFlags": [],
+    "createdBy": "manager",
+    "createdByName": "Quản Lý Ca",
+    "createdByRole": "MANAGER",
+    "createdAt": "2026-10-16T15:00:00",
+    "status": "APPROVED",
+    "month": "10"
+  }
+]
