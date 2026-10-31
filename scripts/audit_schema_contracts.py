@@ -389,8 +389,11 @@ def audit_license_and_legal_compliance() -> int:
                 for cdn_host in forbidden_cdn_hosts:
                     if cdn_host in content:
                         issues.append(f"{rel_fpath}: Contains prohibited external CDN dependency '{cdn_host}'")
-                if "cc.vnaigc.com" in content:
-                    issues.append(f"{rel_fpath}: Contains hardcoded internal domain 'cc.vnaigc.com'")
+                disallowed_domains = os.getenv("FORBIDDEN_DOMAINS", "").split(",")
+                for d in disallowed_domains:
+                    d_clean = d.strip()
+                    if d_clean and d_clean in content:
+                        issues.append(f"{rel_fpath}: Contains disallowed internal domain '{d_clean}'")
 
     print(f"License & Legal Compliance Issues: {len(issues)}")
     for iss in issues:
