@@ -9,19 +9,36 @@ import sys
 block_cipher = None
 PROJECT_ROOT = os.path.dirname(os.path.abspath(SPEC))
 
+def collect_clean_tree(src_dir, dst_prefix):
+    items = []
+    skip_dirs = {'node_modules', '__pycache__', '.git', '.pytest_cache', 'backups', 'logs', 'outbox', 'zalo_session'}
+    skip_exts = {'.pyc', '.pyo', '.db', '.db-shm', '.db-wal', '.log', '.lock', '.bak', '.map'}
+    for root, dirs, files in os.walk(src_dir):
+        dirs[:] = [d for d in dirs if d not in skip_dirs]
+        for fn in files:
+            if any(fn.endswith(ext) for ext in skip_exts) or fn == '.DS_Store':
+                continue
+            full_src = os.path.join(root, fn)
+            rel_dir = os.path.relpath(root, src_dir)
+            target_dir = dst_prefix if rel_dir == '.' else os.path.join(dst_prefix, rel_dir)
+            items.append((full_src, target_dir))
+    return items
+
 a = Analysis(
     [os.path.join(PROJECT_ROOT, 'scripts', 'app_launcher.py')],
     pathex=[PROJECT_ROOT, os.path.join(PROJECT_ROOT, 'backend')],
     binaries=[],
-    datas=[
-        # Bundle entire backend + frontend + data as app payload
-        (os.path.join(PROJECT_ROOT, 'backend'), os.path.join('app', 'backend')),
-        (os.path.join(PROJECT_ROOT, 'frontend'), os.path.join('app', 'frontend')),
-        (os.path.join(PROJECT_ROOT, 'data', 'store_config.json'), os.path.join('app', 'data')),
-        (os.path.join(PROJECT_ROOT, 'data', 'staff_auth.json'), os.path.join('app', 'data')),
-        (os.path.join(PROJECT_ROOT, 'data', 'data.json'), os.path.join('app', 'data')),
-        (os.path.join(PROJECT_ROOT, '.env.example'), 'app'),
-    ],
+    datas=(
+        collect_clean_tree(os.path.join(PROJECT_ROOT, 'backend'), os.path.join('app', 'backend'))
+        + collect_clean_tree(os.path.join(PROJECT_ROOT, 'frontend'), os.path.join('app', 'frontend'))
+        + [
+            (os.path.join(PROJECT_ROOT, 'data', 'store_config.json'), os.path.join('app', 'data')),
+            (os.path.join(PROJECT_ROOT, 'data', 'staff_auth.json'), os.path.join('app', 'data')),
+            (os.path.join(PROJECT_ROOT, 'data', 'data.json'), os.path.join('app', 'data')),
+            (os.path.join(PROJECT_ROOT, 'data', 'sop_templates.json'), os.path.join('app', 'data')),
+            (os.path.join(PROJECT_ROOT, '.env.example'), 'app'),
+        ]
+    ),
     hiddenimports=[
         # FastAPI / Starlette / Uvicorn core
         'fastapi',

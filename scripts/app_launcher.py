@@ -28,8 +28,12 @@ def get_data_dir():
 def get_app_source():
     """Get the bundled app source directory."""
     if getattr(sys, "frozen", False):
-        # Running inside PyInstaller bundle
-        return os.path.join(sys._MEIPASS, "app")
+        # On macOS PyInstaller bundles, real files reside in Contents/Resources/app
+        # while sys._MEIPASS (Contents/Frameworks) holds symlinks.
+        resources_app = os.path.realpath(os.path.join(sys._MEIPASS, "..", "Resources", "app"))
+        if os.path.exists(resources_app):
+            return resources_app
+        return os.path.realpath(os.path.join(sys._MEIPASS, "app"))
     else:
         # Running from source (dev mode)
         return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -41,6 +45,7 @@ def seed_first_run(app_source, data_home):
         ("data/store_config.json", "data/store_config.json"),
         ("data/staff_auth.json", "data/staff_auth.json"),
         ("data/data.json", "data/data.json"),
+        ("data/sop_templates.json", "data/sop_templates.json"),
         (".env.example", ".env"),
     ]
     for src_rel, dst_rel in seeds:
@@ -70,6 +75,7 @@ def start_server(app_source, data_home, port):
     os.environ["DATA_DIR"] = os.path.join(data_home, "data")
     os.environ["OUTBOX_DIR"] = os.path.join(data_home, "data", "outbox")
     os.environ["DATABASE_PATH"] = os.path.join(data_home, "data", "fnbop.db")
+    os.environ["FRONTEND_DIR"] = os.path.realpath(os.path.join(app_source, "frontend"))
     os.environ["ON_PREMISE_MODE"] = "true"
     os.environ["FASTAPI_PORT"] = str(port)
 
