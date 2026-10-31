@@ -59,6 +59,7 @@ build/
 *.egg-info/
 *.zip
 *.tar.gz
+*.dmg
 
 # OS Specific
 .DS_Store
