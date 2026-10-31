@@ -414,7 +414,10 @@ app.include_router(push_routes.router)
 app.include_router(push_routes.alias_router)
 app.include_router(excel_routes.router)
 
-_frontend_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "frontend")
+_frontend_dir = os.path.realpath(
+    os.getenv("FRONTEND_DIR")
+    or os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "frontend")
+)
 
 
 def _get_dynamic_store_name() -> str:
@@ -476,7 +479,7 @@ def redirect_v2_to_root():
 
 
 if os.path.exists(_frontend_dir):
-    app.mount("/", StaticFiles(directory=_frontend_dir, html=True), name="frontend")
+    app.mount("/", StaticFiles(directory=_frontend_dir, html=True, follow_symlink=True), name="frontend")
 
 if __name__ == "__main__":
     import uvicorn
