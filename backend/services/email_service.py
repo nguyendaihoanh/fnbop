@@ -35,6 +35,9 @@ _PROJECT_DIR = os.path.dirname(_BACKEND_DIR)
 
 if os.getenv("OUTBOX_DIR"):
     OUTBOX_DIR = os.getenv("OUTBOX_DIR")
+elif os.getenv("DATA_DIR"):
+    DATA_DIR = os.getenv("DATA_DIR")
+    OUTBOX_DIR = os.path.join(DATA_DIR, "outbox")
 elif os.path.exists(os.path.join(_PROJECT_DIR, "data")):
     DATA_DIR = os.path.join(_PROJECT_DIR, "data")
     OUTBOX_DIR = os.path.join(DATA_DIR, "outbox")
@@ -48,7 +51,10 @@ else:
 OUTBOX_PDF_DIR = os.getenv("OUTBOX_PDF_DIR") or os.path.join(OUTBOX_DIR, "pdf")
 EMAIL_LOG_FILE = os.getenv("EMAIL_LOG_FILE") or os.path.join(OUTBOX_DIR, "email_log.json")
 
-os.makedirs(OUTBOX_PDF_DIR, exist_ok=True)
+try:
+    os.makedirs(OUTBOX_PDF_DIR, exist_ok=True)
+except Exception:
+    pass
 
 
 
