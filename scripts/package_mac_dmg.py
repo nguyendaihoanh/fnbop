@@ -95,7 +95,6 @@ INFO_PLIST = """<?xml version="1.0" encoding="UTF-8"?>
 """
 
 LAUNCHER_SCRIPT = """#!/usr/bin/env bash
-set -e
 
 # ==============================================================================
 # FnBOps macOS Native Launcher (Zero-Config Edge POS & Workforce OS)
@@ -109,6 +108,19 @@ DATA_HOME="$HOME/Library/Application Support/FnBOps"
 mkdir -p "$DATA_HOME/data/logs"
 mkdir -p "$DATA_HOME/data/backups"
 mkdir -p "$DATA_HOME/data/outbox/pdf"
+LOG_FILE="$DATA_HOME/app.log"
+exec > >(tee -a "$LOG_FILE") 2>&1
+
+echo "======================================================="
+echo "[*] FnBOps starting at $(date)..."
+echo "======================================================="
+
+# If FnBOps is already running on port 8100, just open the browser
+if curl -s "http://localhost:8100/api/v1/main/ping" | grep -q "running"; then
+    echo "[*] FnBOps is already running on port 8100. Opening browser..."
+    open "http://localhost:8100"
+    exit 0
+fi
 
 # Seed default configs if first run
 if [ ! -f "$DATA_HOME/data/store_config.json" ] && [ -f "$APP_SOURCE/data/store_config.json" ]; then
@@ -124,29 +136,45 @@ if [ ! -f "$DATA_HOME/.env" ] && [ -f "$APP_SOURCE/.env.example" ]; then
     cp "$APP_SOURCE/.env.example" "$DATA_HOME/.env"
 fi
 
-# Locate Python 3
+# Locate Python 3.10+ (search Homebrew, pyenv, system)
 PYTHON_CMD=""
-if command -v python3 &>/dev/null; then
-    PYTHON_CMD="python3"
-elif [ -f "/opt/homebrew/bin/python3" ]; then
-    PYTHON_CMD="/opt/homebrew/bin/python3"
-elif [ -f "/usr/local/bin/python3" ]; then
-    PYTHON_CMD="/usr/local/bin/python3"
-fi
+CANDIDATES=(
+    "/opt/homebrew/bin/python3"
+    "/opt/homebrew/bin/python3.12"
+    "/opt/homebrew/bin/python3.11"
+    "/usr/local/bin/python3"
+    "/usr/local/bin/python3.12"
+    "/usr/local/bin/python3.11"
+    "$(command -v python3 2>/dev/null)"
+)
+
+for p in "${CANDIDATES[@]}"; do
+    if [ -n "$p" ] && [ -x "$p" ]; then
+        if "$p" -c "import sys; sys.exit(0 if sys.version_info >= (3, 10) else 1)" 2>/dev/null; then
+            PYTHON_CMD="$p"
+            break
+        fi
+    fi
+done
 
 if [ -z "$PYTHON_CMD" ]; then
-    osascript -e 'display dialog "Chưa tìm thấy Python 3 trên máy Mac của bạn.\\nVui lòng cài đặt Python (3.11 hoặc 3.12) từ python.org để khởi chạy FnBOps." with title "FnBOps" buttons {"Đóng"} default button "Đóng" with icon stop'
+    echo "[FAIL] Python >= 3.10 not found."
+    osascript -e 'display dialog "FnBOps yêu cầu máy Mac có Python 3.10 trở lên.\\n\\nVui lòng tải Python từ https://www.python.org hoặc cài đặt qua Homebrew để chạy." with title "FnBOps" buttons {"Đóng"} default button "Đóng" with icon stop'
     exit 1
 fi
 
+echo "[*] Using Python: $PYTHON_CMD ($("$PYTHON_CMD" --version))"
+
 # Virtual environment in persistent user space
 VENV_DIR="$DATA_HOME/.venv"
-if [ ! -d "$VENV_DIR" ]; then
+if [ ! -d "$VENV_DIR" ] || [ ! -f "$VENV_DIR/bin/python3" ]; then
+    echo "[*] Creating fresh virtualenv..."
     "$PYTHON_CMD" -m venv "$VENV_DIR"
 fi
 
 # Auto install / sync packages
 if ! "$VENV_DIR/bin/python3" -c "import fastapi, uvicorn, pydantic" &>/dev/null; then
+    echo "[*] Installing dependencies..."
     "$VENV_DIR/bin/pip" install --quiet --upgrade pip
     if [ -f "$APP_SOURCE/requirements.txt" ]; then
         "$VENV_DIR/bin/pip" install --quiet -r "$APP_SOURCE/requirements.txt"
@@ -155,15 +183,17 @@ fi
 
 # Export runtime environment
 export DATA_DIR="$DATA_HOME/data"
+export OUTBOX_DIR="$DATA_HOME/data/outbox"
 export DATABASE_PATH="$DATA_HOME/data/fnbop.db"
 export ON_PREMISE_MODE="true"
 export FASTAPI_PORT=8100
 export PYTHONPATH="$APP_SOURCE:$APP_SOURCE/backend"
 
-# Automatically open browser
+# Automatically open browser after 2s
 (sleep 2 && open "http://localhost:8100") &
 
 # Start FastAPI application
+echo "[*] Starting uvicorn on port 8100..."
 cd "$DATA_HOME"
 exec "$VENV_DIR/bin/python3" -m uvicorn backend.main:app --host 0.0.0.0 --port 8100
 """
