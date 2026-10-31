@@ -57,6 +57,8 @@ frontend/dist/chunks/*.map
 build/
 /build/
 *.egg-info/
+*.zip
+*.tar.gz
 
 # OS Specific
 .DS_Store

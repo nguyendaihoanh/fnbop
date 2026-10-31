@@ -11,3 +11,13 @@
 *.woff binary
 *.woff2 binary
 *.ttf binary
+
+# Release Packaging Rules (Files excluded from release archives)
+.cursorrules export-ignore
+.dockerignore export-ignore
+.gitattributes export-ignore
+.gitignore export-ignore
+.githooks export-ignore
+.github export-ignore
+tests export-ignore
+docs/brand export-ignore
