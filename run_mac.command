@@ -54,8 +54,42 @@ PORT=${FASTAPI_PORT:-${PORT:-8100}}
 
 echo "🚀 Đang khởi động FnBOps Server tại http://localhost:$PORT ..."
 
-# Mở trình duyệt web tự động sau 2 giây
-(sleep 2 && open "http://localhost:$PORT") &
+open_app_window() {
+    local URL="http://localhost:$PORT"
+    if [ -d "/Applications/Google Chrome.app" ]; then
+        open -n -a "/Applications/Google Chrome.app" --args --app="$URL"
+        osascript -e 'tell application "Google Chrome" to activate' 2>/dev/null || true
+    elif [ -d "$HOME/Applications/Google Chrome.app" ]; then
+        open -n -a "$HOME/Applications/Google Chrome.app" --args --app="$URL"
+        osascript -e 'tell application "Google Chrome" to activate' 2>/dev/null || true
+    elif [ -d "/Applications/Microsoft Edge.app" ]; then
+        open -n -a "/Applications/Microsoft Edge.app" --args --app="$URL"
+        osascript -e 'tell application "Microsoft Edge" to activate' 2>/dev/null || true
+    elif [ -d "$HOME/Applications/Microsoft Edge.app" ]; then
+        open -n -a "$HOME/Applications/Microsoft Edge.app" --args --app="$URL"
+        osascript -e 'tell application "Microsoft Edge" to activate' 2>/dev/null || true
+    elif [ -d "/Applications/Brave Browser.app" ]; then
+        open -n -a "/Applications/Brave Browser.app" --args --app="$URL"
+        osascript -e 'tell application "Brave Browser" to activate' 2>/dev/null || true
+    elif [ -d "$HOME/Applications/Brave Browser.app" ]; then
+        open -n -a "$HOME/Applications/Brave Browser.app" --args --app="$URL"
+        osascript -e 'tell application "Brave Browser" to activate' 2>/dev/null || true
+    else
+        open "http://localhost:$PORT"
+    fi
+}
+
+wait_and_open() {
+    for i in {1..30}; do
+        if curl -s "http://localhost:$PORT/api/v1/main/ping" | grep -q "running"; then
+            open_app_window
+            return 0
+        fi
+        sleep 1
+    done
+    open_app_window
+}
+(wait_and_open) &
 
 # Chạy server FastAPI
 exec "$VENV_DIR/bin/python3" -m uvicorn backend.main:app --host 0.0.0.0 --port "$PORT"

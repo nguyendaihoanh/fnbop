@@ -115,10 +115,50 @@ echo "======================================================="
 echo "[*] FnBOps starting at $(date)..."
 echo "======================================================="
 
-# If FnBOps is already running on port 8100, just open the browser
+open_app_window() {
+    local URL="http://localhost:8100"
+
+    # 1. Google Chrome (Standalone App Window Mode)
+    if [ -d "/Applications/Google Chrome.app" ]; then
+        open -n -a "/Applications/Google Chrome.app" --args --app="$URL"
+        osascript -e 'tell application "Google Chrome" to activate' 2>/dev/null || true
+        return 0
+    elif [ -d "$HOME/Applications/Google Chrome.app" ]; then
+        open -n -a "$HOME/Applications/Google Chrome.app" --args --app="$URL"
+        osascript -e 'tell application "Google Chrome" to activate' 2>/dev/null || true
+        return 0
+    fi
+
+    # 2. Microsoft Edge (Standalone App Window Mode)
+    if [ -d "/Applications/Microsoft Edge.app" ]; then
+        open -n -a "/Applications/Microsoft Edge.app" --args --app="$URL"
+        osascript -e 'tell application "Microsoft Edge" to activate' 2>/dev/null || true
+        return 0
+    elif [ -d "$HOME/Applications/Microsoft Edge.app" ]; then
+        open -n -a "$HOME/Applications/Microsoft Edge.app" --args --app="$URL"
+        osascript -e 'tell application "Microsoft Edge" to activate' 2>/dev/null || true
+        return 0
+    fi
+
+    # 3. Brave Browser (Standalone App Window Mode)
+    if [ -d "/Applications/Brave Browser.app" ]; then
+        open -n -a "/Applications/Brave Browser.app" --args --app="$URL"
+        osascript -e 'tell application "Brave Browser" to activate' 2>/dev/null || true
+        return 0
+    elif [ -d "$HOME/Applications/Brave Browser.app" ]; then
+        open -n -a "$HOME/Applications/Brave Browser.app" --args --app="$URL"
+        osascript -e 'tell application "Brave Browser" to activate' 2>/dev/null || true
+        return 0
+    fi
+
+    # 4. Fallback: Default Browser
+    open "$URL"
+}
+
+# If FnBOps is already running on port 8100, just open the app window
 if curl -s "http://localhost:8100/api/v1/main/ping" | grep -q "running"; then
-    echo "[*] FnBOps is already running on port 8100. Opening browser..."
-    open "http://localhost:8100"
+    echo "[*] FnBOps is already running on port 8100. Opening app window..."
+    open_app_window
     exit 0
 fi
 
@@ -189,8 +229,18 @@ export ON_PREMISE_MODE="true"
 export FASTAPI_PORT=8100
 export PYTHONPATH="$APP_SOURCE:$APP_SOURCE/backend"
 
-# Automatically open browser after 2s
-(sleep 2 && open "http://localhost:8100") &
+# Background monitor: automatically open app window as soon as port 8100 is ready
+wait_and_open() {
+    for i in {1..30}; do
+        if curl -s "http://localhost:8100/api/v1/main/ping" | grep -q "running"; then
+            open_app_window
+            return 0
+        fi
+        sleep 1
+    done
+    open_app_window
+}
+(wait_and_open) &
 
 # Start FastAPI application
 echo "[*] Starting uvicorn on port 8100..."
@@ -291,10 +341,17 @@ def main():
         shutil.rmtree(STAGE_DIR, ignore_errors=True)
         sys.exit(1)
 
-    # 7. Create Applications symlink for drag-to-install
+    # 7. Ad-hoc codesign app bundle
+    print("[*] Signing app bundle with ad-hoc signature...")
+    try:
+        subprocess.run(["codesign", "--force", "--deep", "-s", "-", APP_DIR], check=True, capture_output=True)
+    except Exception as e:
+        print(f"[*] Warning: codesign failed ({e}), continuing...")
+
+    # 8. Create Applications symlink for drag-to-install
     os.symlink("/Applications", os.path.join(STAGE_DIR, "Applications"))
 
-    # 8. Create compressed DMG
+    # 9. Create compressed DMG
     if os.path.exists(OUTPUT_DMG):
         os.remove(OUTPUT_DMG)
 
