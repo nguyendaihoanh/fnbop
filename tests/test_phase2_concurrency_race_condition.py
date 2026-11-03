@@ -191,7 +191,7 @@ class TestPhase2ConcurrencyRaceCondition(unittest.TestCase):
         # 4. Kiểm tra Sổ cái bất biến so_cai_luong: chỉ có ĐÚNG 1 sự kiện THUONG
         so_cai_events = list_so_cai_luong(
             staff_name=target_staff,
-            month=target_month,
+            month=None,
             db_path=self.test_db_path
         )
         bonus_events = [e for e in so_cai_events if e.get("loai_su_kien") == "THUONG"]
