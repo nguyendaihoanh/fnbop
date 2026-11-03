@@ -37,8 +37,6 @@ echo "📦 Đang cài đặt thư viện phụ thuộc..."
 "$VENV_DIR/bin/pip" install --quiet --upgrade pip
 if [ -f "$APP_DIR/requirements.txt" ]; then
     "$VENV_DIR/bin/pip" install --quiet -r "$APP_DIR/requirements.txt"
-elif [ -f "$APP_DIR/backend/requirements.txt" ]; then
-    "$VENV_DIR/bin/pip" install --quiet -r "$APP_DIR/backend/requirements.txt"
 fi
 
 # 3. Tạo thư mục data/logs
