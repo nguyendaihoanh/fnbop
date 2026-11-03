@@ -33,8 +33,6 @@ if ! "$VENV_DIR/bin/python3" -c "import fastapi, uvicorn, pydantic" &>/dev/null;
     "$VENV_DIR/bin/pip" install --quiet --upgrade pip
     if [ -f "$DIR/requirements.txt" ]; then
         "$VENV_DIR/bin/pip" install --quiet -r "$DIR/requirements.txt"
-    elif [ -f "$DIR/backend/requirements.txt" ]; then
-        "$VENV_DIR/bin/pip" install --quiet -r "$DIR/backend/requirements.txt"
     fi
 fi
 
