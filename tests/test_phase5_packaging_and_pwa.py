@@ -119,8 +119,8 @@ def test_windows_run_bat_script_integrity():
 
 def test_macos_packaging_service_files():
     """Kiểm tra các file cấu hình dịch vụ chạy ngầm macOS."""
-    install_script = os.path.join(BASE_DIR, "packaging", "macos", "install_mac.sh")
-    plist_template = os.path.join(BASE_DIR, "packaging", "macos", "io.fnbops.server.plist")
+    install_script = os.path.join(BASE_DIR, "scripts", "macos_service", "install_mac.sh")
+    plist_template = os.path.join(BASE_DIR, "scripts", "macos_service", "io.fnbops.server.plist")
 
     assert os.path.exists(install_script), "install_mac.sh phải tồn tại"
     assert os.path.exists(plist_template), "io.fnbops.server.plist phải tồn tại"
