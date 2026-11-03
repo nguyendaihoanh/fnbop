@@ -397,8 +397,10 @@ def test_sa7_admin_shift_versions_and_installers(e2e_sandbox):
     save_store_config(cfg_updated, tenant_id=tenant)
 
     # Kiểm tra tra cứu lịch sử
+    from datetime import timedelta
     past_mins = get_shift_standard_mins("toi", date_str="2026-01-15", tenant_id=tenant)
-    future_mins = get_shift_standard_mins("toi", date_str="2026-11-01", tenant_id=tenant)
+    future_date = (datetime.now() + timedelta(days=30)).strftime("%Y-%m-%d")
+    future_mins = get_shift_standard_mins("toi", date_str=future_date, tenant_id=tenant)
     assert past_mins == 360, "Ca quá khứ phải giữ nguyên 360 phút"
     assert future_mins == 300, "Ca mới phải áp dụng 300 phút"
 
