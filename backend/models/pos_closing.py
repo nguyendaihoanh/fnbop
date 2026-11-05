@@ -10,14 +10,27 @@ from pydantic import BaseModel, Field, field_validator
 class DailyClosingPayload(BaseModel):
     report_date: str = Field(..., description="Ngày chốt định dạng DD/MM/YYYY")
     closing_time: Optional[str] = Field(default=None, description="Giờ chốt định dạng HH:MM (Mặc định lấy giờ hiện tại)")
-    bill_pos: Optional[float] = Field(default=0.0, description="Doanh thu máy POS365 (0 nếu chờ hệ thống tự lấy lúc 23h hoặc Admin điền sau)")
-    cash_amount: float = Field(..., description="Tiền mặt đếm két")
-    transfer_amount: Optional[float] = Field(default=0.0, description="Chuyển khoản thực nhận (Admin hoặc POS tự động nạp)")
-    expense_amount: Optional[float] = Field(default=0.0, description="Chi quầy")
+    bill_pos: Optional[int] = Field(default=0, description="Doanh thu máy POS365 (VND)")
+    cash_amount: int = Field(..., description="Tiền mặt đếm két (VND)")
+    transfer_amount: Optional[int] = Field(default=0, description="Chuyển khoản thực nhận (VND)")
+    expense_amount: Optional[int] = Field(default=0, description="Chi quầy (VND)")
     expense_detail: Optional[str] = Field(default=None, description="Lý do chi")
     sender_name: str = Field(..., description="Tên nhân viên bàn giao/chốt ca")
     approver_name: Optional[str] = Field(default=None, description="Quản lý/người kiểm tra")
     shift_key: Optional[str] = Field(default="daily", description="Mã ca chốt: 'daily', 'sang', 'toi'...")
+
+    @field_validator("bill_pos", "cash_amount", "transfer_amount", "expense_amount", mode="before")
+    @classmethod
+    def validate_amounts(cls, v) -> int:
+        if v is None:
+            return 0
+        try:
+            val = int(round(float(v)))
+            if val < 0:
+                raise ValueError("Số tiền không được âm")
+            return val
+        except (TypeError, ValueError):
+            raise ValueError("Số tiền không hợp lệ")
 
     @field_validator("report_date")
     @classmethod
@@ -59,14 +72,6 @@ class DailyClosingPayload(BaseModel):
             raise ValueError("closing_time không phải giờ hợp lệ (00:00 - 23:59)")
         return v
 
-    @field_validator("bill_pos", "cash_amount", "transfer_amount", "expense_amount")
-    @classmethod
-    def validate_amounts(cls, v: Optional[float]) -> float:
-        if v is None:
-            return 0.0
-        if v < 0:
-            raise ValueError("Số tiền không được âm")
-        return float(v)
 
     @field_validator("sender_name")
     @classmethod

@@ -269,13 +269,13 @@ def load_attendance_logs() -> List[Dict[str, Any]]:
 
 
 def sync_latest_log_to_sqlite(log: Dict[str, Any]):
-    """Dong bo ban ghi cham cong vao bang attendance_logs trong SQLite wfm.db."""
+    """Dong bo ban ghi cham cong vao bang attendance_logs trong SQLite wfm.db ma khong xoa cac ban ghi khac."""
     if not log:
         return
-    sync_attendance_logs_to_sqlite([log])
+    sync_attendance_logs_to_sqlite([log], purge_missing=False)
 
 
-def sync_attendance_logs_to_sqlite(logs: List[Dict[str, Any]]):
+def sync_attendance_logs_to_sqlite(logs: List[Dict[str, Any]], purge_missing: bool = True):
     """Dong bo danh sach ban ghi cham cong vao bang attendance_logs trong SQLite wfm.db voi BEGIN IMMEDIATE."""
     try:
         from services.db import get_db_connection, get_db_path
@@ -406,11 +406,12 @@ def sync_attendance_logs_to_sqlite(logs: List[Dict[str, Any]]):
                             log["id"] = new_id
                         log["db_id"] = new_id
 
-            if persisted_ids:
-                placeholders = ",".join("?" for _ in persisted_ids)
-                cur.execute(f"DELETE FROM attendance_logs WHERE id NOT IN ({placeholders})", list(persisted_ids))
-            else:
-                cur.execute("DELETE FROM attendance_logs")
+            if purge_missing:
+                if persisted_ids:
+                    placeholders = ",".join("?" for _ in persisted_ids)
+                    cur.execute(f"DELETE FROM attendance_logs WHERE id NOT IN ({placeholders})", list(persisted_ids))
+                else:
+                    cur.execute("DELETE FROM attendance_logs")
 
             conn.execute("COMMIT")
         except Exception as e:

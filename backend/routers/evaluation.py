@@ -18,6 +18,7 @@ import random
 import logging
 import datetime
 import threading
+import asyncio
 from typing import Optional, Dict, Any, List, Tuple
 from fastapi import APIRouter, Request, HTTPException
 
@@ -341,44 +342,48 @@ def record_staff_evaluation(request: Request, payload: StaffEvaluationRequest):
 
 @router.post("/admin/eval-webhook")
 async def proxy_eval_webhook(request: Request):
-    """Zero-Trust Webhook Proxy for Staff Evaluations."""
-    enforce_api_rate_limit(request, limit=30, window_seconds=60, key_prefix="eval_webhook")
-    auth_header = request.headers.get("Authorization")
-    if not auth_header or not auth_header.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Unauthorized")
-    token = auth_header.split(" ")[1]
-    user = get_current_user(token)
-    role = user.get("role")
-    if role not in ["ADMIN", "MANAGER"]:
-        raise HTTPException(status_code=403, detail="Chỉ Quản lý hoặc Admin mới có quyền kích hoạt webhook đánh giá.")
-
+    """Zero-Trust Webhook Proxy for Staff Evaluations (Non-blocking Event Loop)."""
     try:
         body = await request.json()
     except Exception:
         body = {}
 
-    webhook_secret = os.getenv("N8N_EVAL_WEBHOOK_SECRET") or os.getenv("EVAL_WEBHOOK_SECRET") or ""
-    body["auth_token"] = webhook_secret
+    auth_header = request.headers.get("Authorization")
+    if not auth_header or not auth_header.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    token = auth_header.split(" ")[1]
 
-    n8n_url = os.getenv("N8N_EVAL_WEBHOOK_URL", "").strip()
-    if not n8n_url:
-        return {"success": True, "message": "N8N evaluation webhook disabled (N8N_EVAL_WEBHOOK_URL not configured)"}
-    if not (n8n_url.startswith("http://") or n8n_url.startswith("https://")):
-        raise HTTPException(status_code=400, detail="Invalid webhook URL scheme")
-    
-    import urllib.request
-    try:
-        req_data = json.dumps(body).encode("utf-8")
-        req = urllib.request.Request(
-            n8n_url,
-            data=req_data,
-            headers={"Content-Type": "application/json"},
-            method="POST"
-        )
-        with urllib.request.urlopen(req, timeout=5) as response:  # nosec B310
-            return {"success": True, "status": response.status, "message": "Đã chuyển tiếp đánh giá sang n8n"}
-    except Exception as e:
-        return {"success": True, "warning": f"Dispatched: {str(e)}"}
+    def _sync_validate_and_dispatch(req_body: dict) -> dict:
+        enforce_api_rate_limit(request, limit=30, window_seconds=60, key_prefix="eval_webhook")
+        user = get_current_user(token)
+        role = user.get("role")
+        if role not in ["ADMIN", "MANAGER"]:
+            raise HTTPException(status_code=403, detail="Chỉ Quản lý hoặc Admin mới có quyền kích hoạt webhook đánh giá.")
+
+        webhook_secret = os.getenv("N8N_EVAL_WEBHOOK_SECRET") or os.getenv("EVAL_WEBHOOK_SECRET") or ""
+        req_body["auth_token"] = webhook_secret
+
+        n8n_url = os.getenv("N8N_EVAL_WEBHOOK_URL", "").strip()
+        if not n8n_url:
+            return {"success": True, "message": "N8N evaluation webhook disabled (N8N_EVAL_WEBHOOK_URL not configured)"}
+        if not (n8n_url.startswith("http://") or n8n_url.startswith("https://")):
+            raise HTTPException(status_code=400, detail="Invalid webhook URL scheme")
+
+        import urllib.request
+        try:
+            req_data = json.dumps(req_body).encode("utf-8")
+            req = urllib.request.Request(
+                n8n_url,
+                data=req_data,
+                headers={"Content-Type": "application/json"},
+                method="POST"
+            )
+            with urllib.request.urlopen(req, timeout=5) as response:  # nosec B310
+                return {"success": True, "status": response.status, "message": "Đã chuyển tiếp đánh giá sang n8n"}
+        except Exception as e:
+            return {"success": True, "warning": f"Dispatched: {str(e)}"}
+
+    return await asyncio.to_thread(_sync_validate_and_dispatch, body)
 
 
 @router.post("/admin/staff-evaluation/review")
@@ -399,16 +404,32 @@ def review_staff_evaluation(request: Request, payload: ApproveEvaluationRequest)
     target_eval = None
     for e in evals:
         if e.get("id") == payload.eval_id:
-            e["status"] = "APPROVED" if action == "APPROVE" else "REJECTED"
-            e["reviewed_by"] = user.get("sub")
-            e["reviewed_at"] = datetime.datetime.now().isoformat()
-            if payload.admin_note:
-                e["admin_note"] = payload.admin_note.strip()
             target_eval = e
             break
 
     if not target_eval:
         raise HTTPException(status_code=404, detail="Không tìm thấy bản ghi đánh giá.")
+
+    cur_status = str(target_eval.get("status") or "PENDING").upper()
+    if cur_status not in ["PENDING", ""]:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Bản ghi đánh giá {payload.eval_id} đã được xử lý trước đó (Trạng thái: {cur_status})."
+        )
+
+    eval_month = str(target_eval.get("month") or "").strip()
+    is_locked, lock_msg = check_payroll_lock_status(eval_month)
+    if is_locked:
+        raise HTTPException(
+            status_code=423,
+            detail=f"Kỳ lương tháng {eval_month} đã bị Admin khóa sổ đối soát ({lock_msg}). Không thể duyệt đánh giá."
+        )
+
+    target_eval["status"] = "APPROVED" if action == "APPROVE" else "REJECTED"
+    target_eval["reviewed_by"] = user.get("sub")
+    target_eval["reviewed_at"] = datetime.datetime.now().isoformat()
+    if payload.admin_note:
+        target_eval["admin_note"] = payload.admin_note.strip()
 
     save_evaluations(evals)
     try:

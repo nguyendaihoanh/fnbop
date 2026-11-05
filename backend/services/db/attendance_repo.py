@@ -11,7 +11,7 @@ import datetime
 import logging
 from typing import Optional, Dict, Any, List
 
-from services.db.connection import get_db_connection, DEFAULT_TENANT_ID
+from services.db.connection import get_db_connection, write_transaction, DEFAULT_TENANT_ID
 from services.db.schema import _ensure_v2_operational_tables
 
 logger = logging.getLogger("db_service")
@@ -172,28 +172,25 @@ def claim_open_shift_db(
     tenant_id: str = DEFAULT_TENANT_ID,
     db_path: Optional[str] = None
 ) -> Optional[Dict[str, Any]]:
-    conn = get_db_connection(db_path)
-    _ensure_v2_operational_tables(conn)
+    """
+    Atomically claims an open shift using Compare-And-Swap (CAS) with BEGIN IMMEDIATE.
+    Returns the claimed shift dict if successfully claimed by this caller, or None if already claimed.
+    """
     now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    try:
-        with conn:
-            cur = conn.execute(
-                "SELECT * FROM open_shifts WHERE id = ? AND tenant_id = ?",
-                (shift_id, tenant_id)
-            )
-            row = cur.fetchone()
-            if not row or row["status"] != "OPEN":
-                return None
-            conn.execute("""
-                UPDATE open_shifts
-                SET status = 'CLAIMED', claimed_by = ?, claimed_by_name = ?, claimed_at = ?
-                WHERE id = ? AND tenant_id = ? AND status = 'OPEN'
-            """, (username, display_name, now_str, shift_id, tenant_id))
-            cur2 = conn.execute("SELECT * FROM open_shifts WHERE id = ?", (shift_id,))
-            r2 = cur2.fetchone()
-            return dict(r2) if r2 else None
-    finally:
-        conn.close()
+    with write_transaction(db_path) as cur:
+        cur.execute("""
+            UPDATE open_shifts
+            SET status = 'CLAIMED', claimed_by = ?, claimed_by_name = ?, claimed_at = ?
+            WHERE id = ? AND tenant_id = ? AND status = 'OPEN'
+        """, (username, display_name, now_str, shift_id, tenant_id))
+        if cur.rowcount != 1:
+            return None
+        cur.execute(
+            "SELECT * FROM open_shifts WHERE id = ? AND tenant_id = ?",
+            (shift_id, tenant_id)
+        )
+        r2 = cur.fetchone()
+        return dict(r2) if r2 else None
 
 
 def delete_open_shift_db(

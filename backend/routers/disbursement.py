@@ -228,6 +228,12 @@ def check_payroll_lock_status(month: Optional[str] = None) -> Tuple[bool, str]:
         return False, ""
     clean_m = str(month).strip()
     try:
+        from services.db import is_payroll_locked_db
+        if is_payroll_locked_db(clean_m):
+            return True, f"Kỳ lương tháng {clean_m} đang khóa đối soát (SQLite)."
+    except Exception:
+        pass
+    try:
         auth = load_staff_auth()
         locks = auth.get("payroll_locks", {})
         lock_info = locks.get(clean_m)
@@ -725,7 +731,7 @@ def delete_staff_ledger_entry(request: Request, ledger_id: str):
             detail=f"Kỳ lương tháng {e_month} đã bị Admin KHÓA SỔ đối soát ({lock_msg}). Không thể xóa khoản Sổ Phụ này."
         )
 
-    deleted = delete_staff_ledger(ledger_id)
+    deleted = delete_staff_ledger(ledger_id, deleted_by=user.get("sub", "Admin"))
     if not deleted:
         raise HTTPException(status_code=404, detail=f"Không tìm thấy khoản sổ phụ '{ledger_id}' để xóa.")
 

@@ -997,6 +997,47 @@ def checkout_attendance(request: Request, payload: CheckoutPayload):
 
 
 
+def check_payroll_lock_status(date_str_or_month: Optional[str] = None) -> Tuple[bool, str]:
+    """
+    Checks if a given date's or month's payroll is locked by Admin.
+    Accepts 'YYYY-MM-DD', 'DD/MM/YYYY', or month string 'YYYY-MM' / 'MM'.
+    """
+    if not date_str_or_month:
+        return False, ""
+    raw = str(date_str_or_month).strip()
+    month_candidates = [raw]
+    if "/" in raw:
+        parts = raw.split("/")
+        if len(parts) >= 3:
+            month_candidates.extend([parts[1].zfill(2), f"{parts[2]}-{parts[1].zfill(2)}"])
+    elif "-" in raw:
+        parts = raw.split("-")
+        if len(parts) >= 3:
+            month_candidates.extend([parts[1].zfill(2), f"{parts[0]}-{parts[1].zfill(2)}"])
+        elif len(parts) == 2:
+            month_candidates.append(parts[1].zfill(2))
+
+    for m in month_candidates:
+        try:
+            from services.db import is_payroll_locked_db
+            if is_payroll_locked_db(m):
+                return True, f"Kỳ lương tháng {m} đang khóa đối soát (SQLite)."
+        except Exception:
+            pass
+        try:
+            from services.auth import load_staff_auth
+            auth = load_staff_auth()
+            locks = auth.get("payroll_locks", {})
+            lock_info = locks.get(m)
+            if lock_info and isinstance(lock_info, dict):
+                if str(lock_info.get("status", "")).strip().upper() == "LOCKED":
+                    msg = lock_info.get("message") or f"Kỳ lương tháng {m} đang khóa đối soát."
+                    return True, msg
+        except Exception:
+            pass
+    return False, ""
+
+
 @router.post("/review-hanging-shift")
 def review_hanging_shift(request: Request, payload: ReviewHangingShiftPayload):
     """
@@ -1017,6 +1058,15 @@ def review_hanging_shift(request: Request, payload: ReviewHangingShiftPayload):
 
         if not target:
             raise HTTPException(status_code=404, detail="Không tìm thấy bản ghi chấm công cần duyệt.")
+
+        target_d = target.get("date") or payload.target_date
+        if target_d:
+            is_locked, lock_msg = check_payroll_lock_status(target_d)
+            if is_locked:
+                raise HTTPException(
+                    status_code=423,
+                    detail=f"Kỳ lương ngày {target_d} đã bị Admin KHÓA SỔ đối soát ({lock_msg}). Không thể duyệt ca treo."
+                )
 
         if payload.approved_checkin_time and str(payload.approved_checkin_time).strip():
             target["checkin_time"] = str(payload.approved_checkin_time).strip()
@@ -1133,6 +1183,15 @@ def manual_close_shift(payload: ManualClosePayload, auth: Dict[str, Any] = Depen
         if not found:
             raise HTTPException(status_code=404, detail="Không tìm thấy bản ghi ca làm việc.")
 
+        target_d = found.get("date")
+        if target_d:
+            is_locked, lock_msg = check_payroll_lock_status(target_d)
+            if is_locked:
+                raise HTTPException(
+                    status_code=423,
+                    detail=f"Kỳ lương ngày {target_d} đã bị Admin KHÓA SỔ đối soát ({lock_msg}). Không thể đóng ca."
+                )
+
         if payload.manual_checkin and str(payload.manual_checkin).strip():
             found["checkin_time"] = str(payload.manual_checkin).strip()
             
@@ -1171,6 +1230,13 @@ def admin_upsert_shift(payload: AdminUpsertShiftPayload, auth: Dict[str, Any] = 
     """
     actor_name = auth.get("name") or auth.get("sub") or "Admin"
     raw_date = payload.date or payload.date_str or ""
+    if raw_date:
+        is_locked, lock_msg = check_payroll_lock_status(raw_date)
+        if is_locked:
+            raise HTTPException(
+                status_code=423,
+                detail=f"Kỳ lương ngày {raw_date} đã bị Admin KHÓA SỔ đối soát ({lock_msg}). Không thể thêm/sửa ca."
+            )
     ddmmyyyy, date_variants = _parse_date_variants(raw_date)
     cin = str(payload.checkin_time).strip()[:5]
     cout = str(payload.checkout_time).strip()[:5]
@@ -1486,6 +1552,15 @@ def reopen_shift(
         if not target_record:
             raise HTTPException(status_code=404, detail="Không tìm thấy bản ghi ca đã đóng để mở lại.")
 
+        target_d = target_record.get("date")
+        if target_d:
+            is_locked, lock_msg = check_payroll_lock_status(target_d)
+            if is_locked:
+                raise HTTPException(
+                    status_code=423,
+                    detail=f"Kỳ lương ngày {target_d} đã bị Admin KHÓA SỔ đối soát ({lock_msg}). Không thể mở lại ca."
+                )
+
         target_record["checkout_time"] = None
         target_record["total_mins"] = None
         target_record["closed_by"] = None
@@ -1538,6 +1613,15 @@ def delete_shift(
 
         if target_idx == -1 or not target_record:
             raise HTTPException(status_code=404, detail="Không tìm thấy bản ghi ca làm việc để xóa.")
+
+        target_d = target_record.get("date")
+        if target_d:
+            is_locked, lock_msg = check_payroll_lock_status(target_d)
+            if is_locked:
+                raise HTTPException(
+                    status_code=423,
+                    detail=f"Kỳ lương ngày {target_d} đã bị Admin KHÓA SỔ đối soát ({lock_msg}). Không thể xóa ca."
+                )
 
         deleted_record = logs.pop(target_idx)
         save_attendance_logs(logs)
@@ -1754,6 +1838,22 @@ def review_attendance_explanation_request(
             status_code=404,
             detail="Không tìm thấy yêu cầu giải trình công."
         )
+
+    cur_status = str(req.get("status") or "PENDING").upper()
+    if cur_status not in ["PENDING", ""]:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Yêu cầu giải trình {req_id} đã được xử lý trước đó (Trạng thái: {cur_status})."
+        )
+
+    req_date = str(req.get("date") or "")
+    if req_date:
+        is_locked, lock_msg = check_payroll_lock_status(req_date)
+        if is_locked:
+            raise HTTPException(
+                status_code=423,
+                detail=f"Kỳ lương ngày {req_date} đã bị Admin KHÓA SỔ đối soát ({lock_msg}). Không thể duyệt giải trình công."
+            )
 
     req_uname = (req.get("username") or "").strip()
     if role == "MANAGER" and req_uname.lower() == uname.lower():

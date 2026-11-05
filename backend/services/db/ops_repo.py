@@ -241,8 +241,13 @@ def insert_daily_closing(
     """
     conn = get_db_connection(db_path)
     _ensure_daily_closings_table(conn)
-    diff_val = float(record.get("diff", record.get("diff_amount", 0.0)) or 0.0)
-    diff_amt_val = float(record.get("diff_amount", record.get("diff", 0.0)) or 0.0)
+    diff_val = int(round(float(record.get("diff", record.get("diff_amount", 0)) or 0)))
+    diff_amt_val = int(round(float(record.get("diff_amount", record.get("diff", 0)) or 0)))
+    bill_val = int(round(float(record.get("bill_pos", 0) or 0)))
+    cash_val = int(round(float(record.get("cash_amount", 0) or 0)))
+    transfer_val = int(round(float(record.get("transfer_amount", 0) or 0)))
+    expense_val = int(round(float(record.get("expense_amount", 0) or 0)))
+    total_real_val = int(round(float(record.get("total_real", 0) or 0)))
     notes_val = str(record.get("notes") or "")
     shift_key_val = str(record.get("shift_key") or "daily")
 
@@ -259,12 +264,12 @@ def insert_daily_closing(
                 tenant_id,
                 record["report_date"],
                 record["closing_time"],
-                float(record.get("bill_pos", 0.0) or 0.0),
-                float(record.get("cash_amount", 0.0) or 0.0),
-                float(record.get("transfer_amount", 0.0) or 0.0),
-                float(record.get("expense_amount", 0.0) or 0.0),
+                bill_val,
+                cash_val,
+                transfer_val,
+                expense_val,
                 record.get("expense_detail"),
-                float(record.get("total_real", 0.0) or 0.0),
+                total_real_val,
                 diff_val,
                 diff_amt_val,
                 record.get("diff_status", "KHỚP"),
@@ -287,6 +292,25 @@ def insert_daily_closing(
             res["diff_amount"] = diff_amt_val
             res["notes"] = notes_val
             return res
+    except sqlite3.IntegrityError:
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT * FROM daily_closings WHERE tenant_id = ? AND report_date = ? AND shift_key = ? AND closing_time = ?",
+            (tenant_id, record["report_date"], shift_key_val, record.get("closing_time"))
+        )
+        row = cur.fetchone()
+        if not row:
+            cur.execute(
+                "SELECT * FROM daily_closings WHERE tenant_id = ? AND report_date = ? AND shift_key = ?",
+                (tenant_id, record["report_date"], shift_key_val)
+            )
+            row = cur.fetchone()
+        if row:
+            res = dict(row)
+            res["is_warning"] = bool(res["is_warning"])
+            res["duplicate_prevented"] = True
+            return res
+        raise
     finally:
         conn.close()
 

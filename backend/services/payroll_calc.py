@@ -8,9 +8,19 @@ Enforces Zero-Trust Architecture: Business logic and financial rules live on the
 """
 
 from typing import List, Dict, Any, Tuple, Optional
+from decimal import Decimal, ROUND_HALF_UP
 import math
 import unicodedata
 import re
+
+def calc_vnd_from_minutes(minutes: int, hourly_rate: int, multiplier: float = 1.0) -> int:
+    """
+    Calculates VND wages accurately to 1 VND using Decimal and ROUND_HALF_UP.
+    """
+    if minutes <= 0 or hourly_rate <= 0:
+        return 0
+    val = (Decimal(int(minutes)) * Decimal(int(hourly_rate)) * Decimal(str(multiplier))) / Decimal(60)
+    return int(val.quantize(Decimal("1"), rounding=ROUND_HALF_UP))
 
 POLICY_STANDARD_SHIFT_MINS = 300       # 5 hours
 POLICY_OT_BUFFER_MINS = 30            # 30 mins buffer
@@ -573,8 +583,8 @@ def calculate_staff_payslip_breakdown(
     # 2. Iterate DỮ LIỆU for shifts, hours, OT and late arrivals
     du_lieu = data_json.get("DỮ LIỆU", [])
     total_worked_minutes = 0
-    total_standard_cost = 0.0
-    total_ot_cost = 0.0
+    total_standard_cost = 0
+    total_ot_cost = 0
     total_shifts = 0
     late_minutes_list = []
     shift_records = []
@@ -582,8 +592,10 @@ def calculate_staff_payslip_breakdown(
 
     count_bar = 0
     hours_bar = 0.0
+    amount_bar_vnd = 0
     count_service = 0
     hours_service = 0.0
+    amount_service_vnd = 0
 
     for row in du_lieu[1:]:
         if len(row) < 6:
@@ -688,9 +700,9 @@ def calculate_staff_payslip_breakdown(
         is_holiday = is_holiday_date(date_str)
         holiday_multiplier = 2.0 if is_holiday else 1.0
 
-        std_cost = std_mins * rate_per_min * holiday_multiplier
-        ot_cost = ot_mins * rate_per_min * holiday_multiplier
-        shift_total_cost = effective_mins * rate_per_min * holiday_multiplier
+        std_cost = calc_vnd_from_minutes(std_mins, shift_rate, holiday_multiplier)
+        ot_cost = calc_vnd_from_minutes(ot_mins, shift_rate, holiday_multiplier)
+        shift_total_cost = std_cost + ot_cost
 
         total_standard_cost += std_cost
         total_ot_cost += ot_cost
@@ -700,9 +712,11 @@ def calculate_staff_payslip_breakdown(
         if shift_role == "BAR":
             count_bar += 1
             hours_bar += effective_mins / 60.0
+            amount_bar_vnd += shift_total_cost
         else:
             count_service += 1
             hours_service += effective_mins / 60.0
+            amount_service_vnd += shift_total_cost
 
         # Late arrival check from column 9 if available
         late_m = 0
@@ -761,6 +775,7 @@ def calculate_staff_payslip_breakdown(
             "is_holiday": is_holiday,
             "ot_status": ot_status,
             "shift_cost": shift_total_cost,
+            "shift_total_cost": shift_total_cost,
             "source": "data_json"
         })
 
@@ -936,9 +951,9 @@ def calculate_staff_payslip_breakdown(
         is_holiday = is_holiday_date(log_date)
         holiday_multiplier = 2.0 if is_holiday else 1.0
 
-        std_cost = std_mins * rate_per_min * holiday_multiplier
-        ot_cost = ot_mins * rate_per_min * holiday_multiplier
-        shift_total_cost = effective_mins * rate_per_min * holiday_multiplier
+        std_cost = calc_vnd_from_minutes(std_mins, shift_rate, holiday_multiplier)
+        ot_cost = calc_vnd_from_minutes(ot_mins, shift_rate, holiday_multiplier)
+        shift_total_cost = std_cost + ot_cost
 
         total_standard_cost += std_cost
         total_ot_cost += ot_cost
@@ -948,9 +963,11 @@ def calculate_staff_payslip_breakdown(
         if shift_role == "BAR":
             count_bar += 1
             hours_bar += effective_mins / 60.0
+            amount_bar_vnd += shift_total_cost
         else:
             count_service += 1
             hours_service += effective_mins / 60.0
+            amount_service_vnd += shift_total_cost
 
         late_m = float(log.get("late_mins") or 0)
         if late_m > 0:
@@ -972,6 +989,7 @@ def calculate_staff_payslip_breakdown(
             "is_holiday": is_holiday,
             "ot_status": ot_status,
             "shift_cost": shift_total_cost,
+            "shift_total_cost": shift_total_cost,
             "source": "attendance_logs"
         })
 
@@ -1241,13 +1259,13 @@ def calculate_staff_payslip_breakdown(
                 "shifts": count_bar,
                 "hours": round(hours_bar, 2),
                 "rate": role_bar_rate,
-                "amount": int(round(round(hours_bar, 2) * role_bar_rate))
+                "amount": amount_bar_vnd
             },
             "service": {
                 "shifts": count_service,
                 "hours": round(hours_service, 2),
                 "rate": role_service_rate,
-                "amount": int(round(round(hours_service, 2) * role_service_rate))
+                "amount": amount_service_vnd
             }
         },
         "eval_bonus": eval_bonus,
