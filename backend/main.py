@@ -131,6 +131,10 @@ def is_allowed_host(host_header: str) -> bool:
     if host in ALLOWED_HOSTS:
         return True
 
+    # Cho phép domain VNAIGC (*.vnaigc.com)
+    if host.endswith(".vnaigc.com") or host == "vnaigc.com":
+        return True
+
     # Cho phép Tailscale MagicDNS (*.ts.net)
     if host.endswith(".ts.net"):
         return True

@@ -17,6 +17,7 @@ task_artifacts
 node_modules
 dist_preview
 .env*
+!.env.example
 data/*.db
 data/*.db-wal
 data/*.db-shm
