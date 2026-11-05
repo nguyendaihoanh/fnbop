@@ -516,11 +516,17 @@ export function applyRolePermissions(role, meta = {}) {
     const mgrPayslipSegAdmin = document.getElementById("managerPayslipSegmentedControl");
     if (mgrPayslipSegAdmin) mgrPayslipSegAdmin.style.display = "none";
     const payrollSummaryAdmin = document.getElementById("payrollDisbursementSummary");
+    const btnZaloAdmin = document.getElementById("btnSendBulkZaloCards");
     const btnAdvanceAdmin = document.getElementById("btnOpenToolbarAdvance");
     const btnExportAdmin = document.getElementById("btnExportPayrollExcelMobile");
+    const actionButtonsAdmin = document.querySelector(".payslip-action-buttons");
+    const disbFilterAdmin = document.getElementById("disbursementFilterGroup");
     if (payrollSummaryAdmin) payrollSummaryAdmin.style.display = "block";
+    if (actionButtonsAdmin) actionButtonsAdmin.style.removeProperty("display");
+    if (btnZaloAdmin) btnZaloAdmin.style.display = "inline-flex";
     if (btnAdvanceAdmin) btnAdvanceAdmin.style.display = "inline-flex";
     if (btnExportAdmin) btnExportAdmin.style.display = "inline-flex";
+    if (disbFilterAdmin) disbFilterAdmin.style.removeProperty("display");
     const managerAttendancePanel = document.getElementById("managerAttendancePanel");
     if (managerAttendancePanel) managerAttendancePanel.style.display = "block";
     const activeShiftCardAdmin = document.getElementById("activeShiftCard");
@@ -749,10 +755,19 @@ export function setupManagerPayslipSegmentedControl() {
     if (staffPortalContainer) staffPortalContainer.style.display = "none";
     if (adminPayslipContainer) adminPayslipContainer.style.display = "block";
 
-    // Quản lý kiểm công: READ-ONLY ẩn 3 thẻ giải ngân quỹ quán, ẩn tạm ứng, ẩn xuất excel
+    // Quản lý kiểm công: ẩn giải ngân quỹ quán, ẩn cụm nút công cụ Admin và thanh lọc trạng thái CK
+    const btnZalo = document.getElementById("btnSendBulkZaloCards");
+    const actionButtons = document.querySelector(".payslip-action-buttons");
+    const disbFilter = document.getElementById("disbursementFilterGroup");
     if (payrollSummary) payrollSummary.style.display = "none";
+    if (actionButtons) actionButtons.style.setProperty("display", "none", "important");
+    if (btnZalo) btnZalo.style.display = "none";
     if (btnAdvance) btnAdvance.style.display = "none";
     if (btnExport) btnExport.style.display = "none";
+    if (disbFilter) disbFilter.style.setProperty("display", "none", "important");
+    if (typeof window !== "undefined" && window.state) {
+      window.state.currentDisbursementFilter = "ALL";
+    }
 
     if (typeof window.renderTabPayslip === "function") window.renderTabPayslip();
   };

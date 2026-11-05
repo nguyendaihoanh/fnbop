@@ -162,52 +162,52 @@ export function renderTabPayslip() {
   const kpiEl = document.getElementById('payrollDisbursementSummary');
   if (kpiEl) {
     kpiEl.innerHTML = `
-      <div class="payroll-gross-banner" style="background:var(--bg-card); border:1px solid var(--border); border-radius:12px; padding:12px 14px; margin-bottom:10px; box-shadow:0 1px 3px rgba(0,0,0,0.03);">
+      <div class="payroll-gross-banner" style="background:var(--bg-card); border:1px solid var(--border); border-radius:12px; padding:11px 13px; margin-bottom:8px; box-shadow:0 1px 3px rgba(0,0,0,0.02);">
         <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
           <div>
-            <div style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.04em;">Tổng Quỹ Lương Tháng</div>
-            <div class="tabular-nums" style="font-size:20px; font-weight:800; color:var(--text-primary); margin-top:2px;">
+            <div style="font-size:10.5px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.04em;">Tổng Lương Tháng</div>
+            <div class="tabular-nums" style="font-size:clamp(18px, 4.8vw, 21px); font-weight:800; color:var(--text-primary); margin-top:1px; letter-spacing:-0.02em;">
               ${fmtMoney.format(Math.round(totalGrossFund)).replace('₫', 'đ')}
             </div>
           </div>
           <div style="text-align:right; font-size:11px;">
             <div style="font-weight:700; color:var(--text-secondary);">${filtered.length} ca làm việc</div>
             ${totalAdjustments > 0 ? `
-              <div style="color:var(--accent-coral); font-weight:700; margin-top:2px;">
+              <div class="tabular-nums" style="color:var(--accent-coral); font-weight:700; margin-top:2px;">
                 -${fmtMoney.format(totalAdjustments).replace('₫', 'đ')} giảm trừ
               </div>
             ` : (totalBonuses > 0 ? `
-              <div style="color:var(--accent-emerald); font-weight:700; margin-top:2px;">
+              <div class="tabular-nums" style="color:var(--accent-emerald); font-weight:700; margin-top:2px;">
                 +${fmtMoney.format(totalBonuses).replace('₫', 'đ')} thưởng
               </div>
             ` : `<div style="color:var(--text-muted); margin-top:2px;">0đ giảm trừ</div>`)}
           </div>
         </div>
 
-        <div style="display:flex; flex-wrap:wrap; gap:8px 14px; margin-top:8px; padding-top:8px; border-top:1px dashed var(--border); font-size:11px; color:var(--text-muted);">
-          <span>Ca chuẩn: <strong style="color:var(--text-primary); font-weight:700;">${fmtMoney.format(Math.round(totalStandardFund)).replace('₫','đ')}</strong></span>
-          <span>Tăng ca: <strong style="color:var(--accent-coral); font-weight:700;">${fmtMoney.format(Math.round(totalOTFund)).replace('₫','đ')}</strong></span>
-          ${totalAdvances > 0 ? `<span>Ứng lương: <strong style="color:#d97706; font-weight:700;">-${fmtMoney.format(totalAdvances).replace('₫','đ')}</strong></span>` : ''}
-          ${totalDeductions > 0 ? `<span>Phạt trễ/trừ: <strong style="color:#dc2626; font-weight:700;">-${fmtMoney.format(totalDeductions).replace('₫','đ')}</strong></span>` : ''}
-          ${totalBonuses > 0 ? `<span>Thưởng: <strong style="color:#059669; font-weight:700;">+${fmtMoney.format(totalBonuses).replace('₫','đ')}</strong></span>` : ''}
+        <div class="payroll-gross-breakdown">
+          <span>Ca chuẩn: <strong class="tabular-nums" style="color:var(--text-primary); font-weight:700;">${fmtMoney.format(Math.round(totalStandardFund)).replace('₫','đ')}</strong></span>
+          <span>Tăng ca: <strong class="tabular-nums" style="color:var(--accent-coral); font-weight:700;">${fmtMoney.format(Math.round(totalOTFund)).replace('₫','đ')}</strong></span>
+          ${totalAdvances > 0 ? `<span>Ứng lương: <strong class="tabular-nums" style="color:#d97706; font-weight:700;">-${fmtMoney.format(totalAdvances).replace('₫','đ')}</strong></span>` : ''}
+          ${totalDeductions > 0 ? `<span>Phạt/Trừ: <strong class="tabular-nums" style="color:#dc2626; font-weight:700;">-${fmtMoney.format(totalDeductions).replace('₫','đ')}</strong></span>` : ''}
+          ${totalBonuses > 0 ? `<span>Thưởng: <strong class="tabular-nums" style="color:#059669; font-weight:700;">+${fmtMoney.format(totalBonuses).replace('₫','đ')}</strong></span>` : ''}
         </div>
       </div>
 
       <div class="payroll-disbursement-kpi">
         <div class="disb-kpi-card total">
-          <div class="disb-kpi-label">THỰC CHUYỂN (NET)</div>
+          <div class="disb-kpi-label">TỔNG CHI</div>
           <div class="disb-kpi-val tabular-nums">${fmtMoney.format(totalPayrollFund).replace('₫', 'đ')}</div>
-          <div class="disb-kpi-sub">${allCalculatedStaff.length} nhân sự</div>
+          <div class="disb-kpi-sub">${allCalculatedStaff.length} người</div>
         </div>
         <div class="disb-kpi-card paid">
-          <div class="disb-kpi-label">ĐÃ CHUYỂN KHOẢN</div>
+          <div class="disb-kpi-label">ĐÃ CHUYỂN</div>
           <div class="disb-kpi-val tabular-nums" style="color:var(--accent-emerald);">${fmtMoney.format(disbursedFund).replace('₫', 'đ')}</div>
-          <div class="disb-kpi-sub">${paidCount} đã thanh toán</div>
+          <div class="disb-kpi-sub">${paidCount} người</div>
         </div>
         <div class="disb-kpi-card unpaid">
-          <div class="disb-kpi-label">CÒN PHẢI CHUYỂN</div>
+          <div class="disb-kpi-label">CÒN LẠI</div>
           <div class="disb-kpi-val tabular-nums" style="color:var(--accent-coral);">${fmtMoney.format(remainingFund).replace('₫', 'đ')}</div>
-          <div class="disb-kpi-sub">${unpaidCount} chưa thanh toán</div>
+          <div class="disb-kpi-sub">${unpaidCount} người</div>
         </div>
       </div>
     `;
@@ -259,33 +259,24 @@ export function renderTabPayslip() {
   const curName = (localStorage.getItem('vnaigc_name') || '').toUpperCase().trim();
 
   staffList.forEach(s => {
-    const isSelfStaff = (s.name.toUpperCase().trim() === curName || removeAccents(s.name).toUpperCase().trim() === removeAccents(curName).toUpperCase().trim() || removeAccents(s.name).toUpperCase().trim() === curUname);
     const item = document.createElement('div');
-    item.className = `slip-item ${s.isPaid ? 'slip-item-paid' : 'slip-item-unpaid'}`;
+    item.className = `slip-item ${(viewerRole === 'ADMIN' && s.isPaid) ? 'slip-item-paid' : 'slip-item-unpaid'}`;
     item.innerHTML = `
-      <div class="slip-avatar" style="${s.isPaid ? 'background:rgba(16, 185, 129, 0.15); color:#047857;' : ''}">${escapeHtml(s.name.charAt(0))}</div>
+      <div class="slip-avatar" style="${(viewerRole === 'ADMIN' && s.isPaid) ? 'background:rgba(16, 185, 129, 0.15); color:#047857;' : ''}">${escapeHtml(s.name.charAt(0))}</div>
       <div class="slip-meta">
-        <div style="display:flex; align-items:center; gap:6px;">
+        <div style="display:flex; align-items:center; gap:5px; min-width:0;">
           <strong class="slip-name">${escapeHtml(s.name)}</strong>
-          ${(viewerRole === 'ADMIN' && s.advanceAmt > 0) ? `<span style="font-size:11px; background:rgba(239, 68, 68, 0.1); color:#dc2626; padding:1px 5px; border-radius:4px; font-weight:700;">Ứng -${fmtMoney.format(s.advanceAmt).replace('₫','đ')}</span>` : ''}
+          ${(viewerRole === 'ADMIN' && s.advanceAmt > 0) ? `<span class="slip-advance-badge tabular-nums" style="font-size:10px; background:rgba(239, 68, 68, 0.08); color:#dc2626; border:1px solid rgba(239, 68, 68, 0.16); padding:1px 4px; border-radius:4px; font-weight:700; line-height:1.25; white-space:nowrap; flex-shrink:0; letter-spacing:-0.01em;">Ứng -${fmtMoney.format(s.advanceAmt).replace('₫','đ')}</span>` : ''}
         </div>
         <div class="slip-role">${escapeHtml(s.role)} • ${s.shifts} ca • ${s.hours}h</div>
       </div>
-      <div class="slip-finance" style="display:flex; flex-direction:column; align-items:flex-end; gap:4px;">
-        ${(viewerRole === 'MANAGER' && !isSelfStaff) ? `
-          <div class="slip-pay tabular-nums" style="font-size:13px; color:var(--text-muted); font-weight:600;">*** đ</div>
-        ` : `
-          <div class="slip-pay tabular-nums" style="font-size:15px; font-weight:800; ${s.isPaid ? 'color:#047857;' : 'color:var(--text-primary);'}">${fmtMoney.format(s.netPay).replace('₫', 'đ')}</div>
-        `}
+      <div class="slip-finance">
+        <div class="slip-pay tabular-nums" style="font-size:14.5px; font-weight:800; ${(viewerRole === 'ADMIN' && s.isPaid) ? 'color:#047857;' : 'color:var(--text-primary);'}">${fmtMoney.format(s.netPay).replace('₫', 'đ')}</div>
         ${(viewerRole === 'ADMIN') ? `
           <button type="button" class="disb-toggle-btn ${s.isPaid ? 'paid' : 'unpaid'}" onclick="event.stopPropagation(); toggleStaffDisbursement('${escapeHtml(s.name)}', '${s.isPaid ? 'UNPAID' : 'PAID'}', ${s.netPay})">
             ${s.isPaid ? '✓ ĐÃ CK' : '○ Chưa CK'}
           </button>
-        ` : `
-          <span style="font-size:11px; font-weight:700; ${s.isPaid ? 'color:#047857;' : 'color:var(--accent-coral);'}">
-            ${s.isPaid ? '✓ Đã CK' : '○ Chưa CK'}
-          </span>
-        `}
+        ` : ''}
       </div>
     `;
     item.addEventListener('click', () => openPayslipModal(s.name));
@@ -427,12 +418,16 @@ export function generatePayslipHtml(staffName, serverBreakdown = null) {
     otCost = 0;
     totalBonus = Number(sB.eval_bonus || 0);
     totalReceived = Number(sB.gross_salary || (standardCost + totalBonus));
-    totalPenalty = Number(sB.total_deductions != null ? sB.total_deductions : (Number(sB.late_penalty_total || 0) + Number(sB.eval_deductions || 0)));
+    const currentAdvance = (m === '8') ? 0 : getStaffAdvanceSummary(m, staffName);
+    aSummary = Math.max(Number(sB.advance_amount || 0), currentAdvance);
+    if (sB.late_penalty_total != null || sB.eval_deductions != null) {
+      totalPenalty = Number(sB.late_penalty_total || 0) + Number(sB.eval_deductions || 0);
+    } else if (sB.total_deductions != null) {
+      totalPenalty = Math.max(0, Number(sB.total_deductions) - aSummary);
+    }
     if (sB.violations && Array.isArray(sB.violations) && sB.violations.length > 0) {
       penaltyDetails = sB.violations.map(v => escapeHtml(v));
     }
-    const currentAdvance = (m === '8') ? 0 : getStaffAdvanceSummary(m, staffName);
-    aSummary = Math.max(Number(sB.advance_amount || 0), currentAdvance);
     bankTransfer = Math.max(0, standardCost - aSummary);
     totalHours = Number(sB.total_hours || 0).toFixed(1);
     standardHours = totalHours;
@@ -538,13 +533,8 @@ export function generatePayslipHtml(staffName, serverBreakdown = null) {
         <!-- Hero Amount Section -->
         <div class="rc-hero-total">
             <span class="rc-hero-label">THỰC CHUYỂN KHOẢN (ĐÃ TRỪ ỨNG)</span>
-            ${isManagerOther ? `
-            <div class="rc-hero-amount tabular-nums" style="font-size:18px; letter-spacing:1px; color:var(--text-muted);">BẢO MẬT QUẢN TRỊ</div>
-            <div class="rc-hero-sub">Chỉ Chủ quán (Admin) và nhân sự mới có quyền xem chi tiết số tiền lương</div>
-            ` : `
             <div class="rc-hero-amount tabular-nums">${fmtMoney.format(bankTransferAfterPenalty).replace('₫', 'đ')}</div>
             <div class="rc-hero-sub">Lương thực nhận sau khi khấu trừ tạm ứng &amp; kỷ luật</div>
-            `}
 
             <!-- 3-Mini Stats Trio (from Figma) -->
             <div class="rc-stats-trio">
@@ -557,7 +547,7 @@ export function generatePayslipHtml(staffName, serverBreakdown = null) {
                     <span class="rc-stat-lbl">Giờ công</span>
                 </div>
                 <div class="rc-stat-box">
-                    <span class="rc-stat-val tabular-nums">${isManagerOther ? '***' : (fmtMoney.format(emp.wage).replace('₫', 'đ') + '/h')}</span>
+                    <span class="rc-stat-val tabular-nums">${fmtMoney.format(emp.wage).replace('₫', 'đ') + '/h'}</span>
                     <span class="rc-stat-lbl">Đơn giá</span>
                 </div>
             </div>
@@ -598,7 +588,7 @@ export function generatePayslipHtml(staffName, serverBreakdown = null) {
             </div>
             <div class="rc-row">
                 <span class="rc-row-title">Đơn giá lương cơ bản</span>
-                <span class="rc-row-val tabular-nums">${isManagerOther ? '*** đ/giờ' : (fmtMoney.format(emp.wage).replace('₫', 'đ') + '/giờ')}</span>
+                <span class="rc-row-val tabular-nums">${fmtMoney.format(emp.wage).replace('₫', 'đ') + '/giờ'}</span>
             </div>
             <div class="rc-row">
                 <span class="rc-row-title">Lương tiêu chuẩn (${standardHours} giờ)</span>
@@ -666,7 +656,7 @@ export function generatePayslipHtml(staffName, serverBreakdown = null) {
 
         <!-- Admin/Manager Quick Actions: Ghi Tạm Ứng & Trạng Thái Chuyển Khoản -->
         <div class="rc-admin-actions" style="margin-top: 10px; display: flex; flex-direction: column; gap: 8px;">
-            ${(['ADMIN', 'MANAGER'].includes(localStorage.getItem('vnaigc_role')) || ['ADMIN', 'MANAGER'].includes(state.rawData && state.rawData._meta && state.rawData._meta.role)) ? `
+            ${(userRole === 'ADMIN' || (state.rawData && state.rawData._meta && state.rawData._meta.role === 'ADMIN')) ? `
               <div style="display:flex; gap:8px;">
                 <button type="button" onclick="sendPayslipZaloCard('${escapeHtml(staffName)}', '${escapeHtml(m)}')" class="sheet-btn" style="flex:1; background:rgba(48, 209, 88, 0.12); color:var(--accent-emerald); border:1.5px solid rgba(48, 209, 88, 0.4); font-weight:700; padding:10px; font-size:12.5px; border-radius:8px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px;">
                   <span>📱</span> Gửi Ảnh Zalo
@@ -675,14 +665,13 @@ export function generatePayslipHtml(staffName, serverBreakdown = null) {
                   👁️ Xem Thẻ
                 </button>
               </div>
-              ${(userRole === 'ADMIN' || (state.rawData && state.rawData._meta && state.rawData._meta.role === 'ADMIN')) ? `
               <button type="button" onclick="openLedgerEntryModal('${escapeHtml(staffName)}', 'advance')" class="sheet-btn" style="background: rgba(239, 68, 68, 0.1); color: #dc2626; border: 1.5px solid #ef4444; font-weight: 700; padding: 10px; font-size: 13px; border-radius: 8px; cursor: pointer;">
                 ➕ Ghi Tạm Ứng Cho ${escapeHtml(staffName)}
               </button>
-              ` : ''}
             ` : ''}
 
             ${(() => {
+              if (isManagerOther) return '';
               const isPaid = checkStaffIsPaid(m, staffName);
               const canToggle = (userRole === 'ADMIN' || (state.rawData && state.rawData._meta && state.rawData._meta.role === 'ADMIN'));
               if (isPaid) {
@@ -704,9 +693,9 @@ export function generatePayslipHtml(staffName, serverBreakdown = null) {
         </div>
 
         <!-- Summary Total Row -->
-        <div class="rc-summary-row" style="${checkStaffIsPaid(m, staffName) ? 'border-top: 2px solid #10b981; background: rgba(16, 185, 129, 0.08); padding: 10px 12px; border-radius: 8px;' : ''}">
-            <span class="rc-sum-label" style="${checkStaffIsPaid(m, staffName) ? 'color: #047857; font-weight: 800;' : ''}">${checkStaffIsPaid(m, staffName) ? '✓ ĐÃ CHUYỂN KHOẢN HOÀN TẤT:' : 'THỰC CHUYỂN KHOẢN (ĐÃ TRỪ ỨNG):'}</span>
-            <span class="rc-sum-val tabular-nums" style="color: ${checkStaffIsPaid(m, staffName) ? '#047857 !important;' : 'var(--accent-coral);'} font-size: 20px; font-weight: 800;">${fmtMoney.format(bankTransferAfterPenalty).replace('₫', 'đ')}</span>
+        <div class="rc-summary-row" style="${(!isManagerOther && checkStaffIsPaid(m, staffName)) ? 'border-top: 2px solid #10b981; background: rgba(16, 185, 129, 0.08); padding: 10px 12px; border-radius: 8px;' : ''}">
+            <span class="rc-sum-label" style="${(!isManagerOther && checkStaffIsPaid(m, staffName)) ? 'color: #047857; font-weight: 800;' : ''}">${(!isManagerOther && checkStaffIsPaid(m, staffName)) ? '✓ ĐÃ CHUYỂN KHOẢN HOÀN TẤT:' : 'THỰC CHUYỂN KHOẢN (ĐÃ TRỪ ỨNG):'}</span>
+            <span class="rc-sum-val tabular-nums" style="color: ${(!isManagerOther && checkStaffIsPaid(m, staffName)) ? '#047857 !important;' : 'var(--accent-coral);'} font-size: 20px; font-weight: 800;">${fmtMoney.format(bankTransferAfterPenalty).replace('₫', 'đ')}</span>
         </div>
 
         <!-- Notice & Policy -->
@@ -828,6 +817,16 @@ export async function openPayslipModal(staffName) {
 
 
 export function setupPayslipActionButtons() {
+  const pSheet = document.getElementById("payslipSheet");
+  if (pSheet && pSheet.dataset && pSheet.dataset.bound === "true") {
+    setupLedgerEntryModal();
+    return;
+  }
+  if (pSheet) {
+    if (!pSheet.dataset) pSheet.dataset = {};
+    pSheet.dataset.bound = "true";
+  }
+
   const btnPrint = document.getElementById("btnPrintSheet");
   if (btnPrint) {
     btnPrint.addEventListener("click", () => window.print());
@@ -935,6 +934,12 @@ export function setupEvalModal() {
   const btnOpen = document.getElementById('btnOpenEval');
   const btnClose = document.getElementById('btnCloseEval');
   const modal = document.getElementById('evalSheet');
+  if (modal && modal.dataset && modal.dataset.bound === 'true') return;
+  if (modal) {
+    if (!modal.dataset) modal.dataset = {};
+    modal.dataset.bound = 'true';
+  }
+
   const staffSelect = document.getElementById('evalStaffSelect');
   const shiftSelect = document.getElementById('evalShiftSelect');
   const dateInput = document.getElementById('evalDateInput');
@@ -1088,8 +1093,14 @@ export function setupEvalModal() {
     });
   });
 
-  if (btnCustom) {
-    btnCustom.addEventListener('click', async () => {
+  if (btnCustom && (!btnCustom.dataset || btnCustom.dataset.bound !== 'true')) {
+    if (!btnCustom.dataset) btnCustom.dataset = {};
+    btnCustom.dataset.bound = 'true';
+    btnCustom.addEventListener('click', async (e) => {
+      if (btnCustom.dataset && btnCustom.dataset.submitting === 'true') {
+        if (e && typeof e.stopImmediatePropagation === 'function') e.stopImmediatePropagation();
+        return;
+      }
       const staffName = staffSelect?.value;
       if (!staffName) return showToast('Vui lòng chọn nhân sự!', 'warn');
       const notes = (notesInput?.value || '').trim();
@@ -1102,6 +1113,9 @@ export function setupEvalModal() {
       if (evalAmount <= 0) return showToast('Vui lòng nhập số tiền phạt / thưởng hợp lệ (> 0đ)!', 'warn');
 
       const originalBtnText = btnCustom.textContent;
+      if (!btnCustom.dataset) btnCustom.dataset = {};
+      btnCustom.dataset.submitting = 'true';
+      if (btnCustom.style) btnCustom.style.pointerEvents = 'none';
       btnCustom.textContent = 'Đang gửi...';
       btnCustom.disabled = true;
 
@@ -1182,6 +1196,8 @@ export function setupEvalModal() {
       } catch (e) {
         showToast('Lỗi kết nối máy chủ!', 'error');
       } finally {
+        if (btnCustom.dataset) btnCustom.dataset.submitting = 'false';
+        if (btnCustom.style) btnCustom.style.pointerEvents = '';
         btnCustom.textContent = originalBtnText;
         btnCustom.disabled = false;
       }
@@ -1513,6 +1529,24 @@ export function openStaffShiftsDetailModal(staffName) {
   document.getElementById('shiftsModalTitle').textContent = `Chi Tiết Chấm Công • ${monthTitle}`;
   document.getElementById('shiftsModalSubtitle').textContent = `Nhân sự: ${targetName} • Xem lịch sử Check-in / Out từng ngày`;
 
+  const canManageShifts = (['ADMIN', 'MANAGER'].includes(localStorage.getItem('vnaigc_role')) || ['ADMIN', 'MANAGER'].includes(state.rawData && state.rawData._meta && state.rawData._meta.role));
+  const btnAddShift = document.getElementById('btnAdminAddShiftInModal');
+  if (btnAddShift) {
+    if (canManageShifts) {
+      btnAddShift.style.display = 'inline-flex';
+      btnAddShift.onclick = () => openAdminUpsertShiftModal({
+        staffName: targetName,
+        date: `01/${String(m).padStart(2, '0')}/2026`,
+        shift: 'Ca Sáng',
+        in: '06:00',
+        out: '11:30',
+        clearLate: true
+      });
+    } else {
+      btnAddShift.style.display = 'none';
+    }
+  }
+
   const shifts = getStaffShiftsList(targetName, state.currentMonth);
 
   let totalMins = 0;
@@ -1586,15 +1620,27 @@ export function openStaffShiftsDetailModal(staffName) {
         const costStr = fmtMoney.format(s.cost || 0).replace('₫', 'đ');
 
         const isExcess = (s.mins > (stdMins + otBuffer));
-        const canManageShifts = (['ADMIN', 'MANAGER'].includes(localStorage.getItem('vnaigc_role')) || ['ADMIN', 'MANAGER'].includes(state.rawData && state.rawData._meta && state.rawData._meta.role));
+        const shiftPayloadJson = encodeURIComponent(JSON.stringify({
+          staffName: s.name || targetName,
+          date: s.date,
+          shift: s.shift,
+          in: s.in,
+          out: s.out,
+          effectiveMins: s.effectiveMins || s.mins || 0,
+          lateMins: s.lateMins || 0,
+          shiftKey: s.shiftKey
+        }));
         let adminActionHtml = '';
-        if (canManageShifts && isExcess) {
+        if (canManageShifts) {
           adminActionHtml = `
-            <div style="display:flex; justify-content:flex-end; align-items:center; gap:6px; margin-top:6px; padding-top:6px; border-top:1px dashed var(--border);">
+            <div style="display:flex; justify-content:flex-end; align-items:center; gap:6px; margin-top:6px; padding-top:6px; border-top:1px dashed var(--border); flex-wrap:wrap;">
               <span style="font-size:12px; color:var(--text-muted); margin-right:auto;">Quản lý:</span>
-              <button onclick="(window.confirmShiftOT || function(){})('${s.shiftKey}', 'APPROVE', ${s.mins})" style="background:rgba(16, 185, 129, 0.12); color:#059669; border:1px solid #10b981; border-radius:6px; padding:3px 8px; font-size:12px; font-weight:700; cursor:pointer;">Duyệt đủ ${s.mins}p</button>
-              <button onclick="(window.confirmShiftOT || function(){})('${s.shiftKey}', 'CUT', ${stdMins})" style="background:rgba(239, 68, 68, 0.12); color:#dc2626; border:1px solid #ef4444; border-radius:6px; padding:3px 8px; font-size:12px; font-weight:700; cursor:pointer;">Cắt ${stdMins}p</button>
-              ${s.approval ? `<button onclick="(window.confirmShiftOT || function(){})('${s.shiftKey}', 'RESET', ${stdMins})" title="Hoàn tác ca này về chờ duyệt" style="background:rgba(239, 68, 68, 0.08); border:1px solid rgba(239, 68, 68, 0.25); color:#dc2626; border-radius:4px; padding:2px 6px; font-size:11px; font-weight:700; cursor:pointer;">↩ Hoàn tác</button>` : ''}
+              <button onclick="window.openAdminUpsertShiftFromEncoded && window.openAdminUpsertShiftFromEncoded('${shiftPayloadJson}')" style="background:rgba(16, 185, 129, 0.08); color:var(--accent-emerald); border:1px solid rgba(16, 185, 129, 0.35); border-radius:6px; padding:3px 8px; font-size:12px; font-weight:700; cursor:pointer;">✎ Sửa giờ</button>
+              ${isExcess ? `
+                <button onclick="(window.confirmShiftOT || function(){})('${s.shiftKey}', 'APPROVE', ${s.mins})" style="background:rgba(16, 185, 129, 0.12); color:#059669; border:1px solid #10b981; border-radius:6px; padding:3px 8px; font-size:12px; font-weight:700; cursor:pointer;">Duyệt đủ ${s.mins}p</button>
+                <button onclick="(window.confirmShiftOT || function(){})('${s.shiftKey}', 'CUT', ${stdMins})" style="background:rgba(239, 68, 68, 0.12); color:#dc2626; border:1px solid #ef4444; border-radius:6px; padding:3px 8px; font-size:12px; font-weight:700; cursor:pointer;">Cắt ${stdMins}p</button>
+                ${s.approval ? `<button onclick="(window.confirmShiftOT || function(){})('${s.shiftKey}', 'RESET', ${stdMins})" title="Hoàn tác ca này về chờ duyệt" style="background:rgba(239, 68, 68, 0.08); border:1px solid rgba(239, 68, 68, 0.25); color:#dc2626; border-radius:4px; padding:2px 6px; font-size:11px; font-weight:700; cursor:pointer;">↩ Hoàn tác</button>` : ''}
+              ` : ''}
             </div>
           `;
         }
@@ -1649,6 +1695,185 @@ export function openStaffShiftsDetailModal(staffName) {
 export function closeStaffShiftsModal() {
   const modal = document.getElementById('staffShiftsSheet');
   if (modal) modal.classList.remove('active');
+}
+
+function _recalcUpsertShiftMins() {
+  const inEl = document.getElementById('upsertShiftInInput');
+  const outEl = document.getElementById('upsertShiftOutInput');
+  const minsEl = document.getElementById('upsertShiftMinsInput');
+  if (!inEl || !outEl || !minsEl) return;
+  const parseHm = (str) => {
+    const parts = String(str || '').trim().split(':');
+    if (parts.length < 2) return null;
+    const h = parseInt(parts[0], 10);
+    const m = parseInt(parts[1], 10);
+    if (isNaN(h) || isNaN(m)) return null;
+    return h * 60 + m;
+  };
+  const inM = parseHm(inEl.value);
+  const outM = parseHm(outEl.value);
+  if (inM !== null && outM !== null) {
+    let diff = outM - inM;
+    if (diff < 0) diff += 1440;
+    if (diff > 0) minsEl.value = diff;
+  }
+}
+
+export function openAdminUpsertShiftFromEncoded(encodedJson) {
+  try {
+    const payload = JSON.parse(decodeURIComponent(encodedJson));
+    openAdminUpsertShiftModal(payload);
+  } catch (e) {
+    console.error('openAdminUpsertShiftFromEncoded error:', e);
+  }
+}
+
+export function openAdminUpsertShiftModal(shiftData = {}) {
+  const modal = document.getElementById('adminUpsertShiftSheet');
+  if (!modal) return;
+
+  const targetName = shiftData.staffName || (state.currentViewingStaff && state.currentViewingStaff.name) || 'NHÂN VIÊN';
+  const isEdit = Boolean(shiftData.shiftKey);
+
+  const titleEl = document.getElementById('adminUpsertShiftTitle');
+  const subEl = document.getElementById('adminUpsertShiftSub');
+  if (titleEl) titleEl.textContent = isEdit ? `Chỉnh Giờ Ca • ${targetName}` : `Thêm Bổ Sung Ca • ${targetName}`;
+  if (subEl) subEl.textContent = isEdit
+    ? `Chỉnh chính xác Giờ Vào - Giờ Ra ca ngày ${shiftData.date || ''}`
+    : `Tạo ca bổ sung cho nhân sự quên bấm Check-in / Check-out`;
+
+  const recIdEl = document.getElementById('upsertShiftRecordId');
+  const staffEl = document.getElementById('upsertShiftStaffName');
+  const dateEl = document.getElementById('upsertShiftDateInput');
+  const shiftSel = document.getElementById('upsertShiftKeySelect');
+  const inEl = document.getElementById('upsertShiftInInput');
+  const outEl = document.getElementById('upsertShiftOutInput');
+  const minsEl = document.getElementById('upsertShiftMinsInput');
+  const clearLateEl = document.getElementById('upsertShiftClearLate');
+  const noteEl = document.getElementById('upsertShiftNoteInput');
+
+  if (recIdEl) recIdEl.value = shiftData.recordId || '';
+  if (staffEl) staffEl.value = targetName;
+  if (dateEl) dateEl.value = shiftData.date || '';
+
+  const shiftNorm = removeAccents(shiftData.shift || '').toLowerCase();
+  const isToi = shiftNorm.includes('toi');
+  if (shiftSel) {
+    shiftSel.value = isToi ? 'toi' : 'sang';
+    shiftSel.onchange = () => {
+      if (!isEdit) {
+        if (shiftSel.value === 'toi') {
+          if (inEl) inEl.value = '17:00';
+          if (outEl) outEl.value = '22:00';
+        } else {
+          if (inEl) inEl.value = '06:00';
+          if (outEl) outEl.value = '11:30';
+        }
+        _recalcUpsertShiftMins();
+      }
+    };
+  }
+
+  if (inEl) {
+    inEl.value = (shiftData.in && shiftData.in.includes(':')) ? shiftData.in.slice(0, 5) : (isToi ? '17:00' : '06:00');
+    inEl.oninput = _recalcUpsertShiftMins;
+  }
+  if (outEl) {
+    outEl.value = (shiftData.out && shiftData.out.includes(':')) ? shiftData.out.slice(0, 5) : (isToi ? '22:00' : '11:30');
+    outEl.oninput = _recalcUpsertShiftMins;
+  }
+
+  if (minsEl) {
+    if (shiftData.effectiveMins && shiftData.effectiveMins > 0) {
+      minsEl.value = shiftData.effectiveMins;
+    } else {
+      _recalcUpsertShiftMins();
+    }
+  }
+
+  if (clearLateEl) {
+    clearLateEl.checked = shiftData.clearLate !== undefined ? Boolean(shiftData.clearLate) : !(shiftData.lateMins > 0);
+  }
+  if (noteEl) {
+    noteEl.value = '';
+  }
+
+  modal.classList.add('active');
+}
+
+export function closeAdminUpsertShiftModal() {
+  const modal = document.getElementById('adminUpsertShiftSheet');
+  if (modal) modal.classList.remove('active');
+}
+
+export async function submitAdminUpsertShift() {
+  const recId = (document.getElementById('upsertShiftRecordId')?.value || '').trim();
+  const staffName = (document.getElementById('upsertShiftStaffName')?.value || '').trim();
+  const dateStr = (document.getElementById('upsertShiftDateInput')?.value || '').trim();
+  const shiftKey = (document.getElementById('upsertShiftKeySelect')?.value || 'sang').trim();
+  const checkinTime = (document.getElementById('upsertShiftInInput')?.value || '06:00').trim();
+  const checkoutTime = (document.getElementById('upsertShiftOutInput')?.value || '11:30').trim();
+  const durationMins = parseInt(document.getElementById('upsertShiftMinsInput')?.value || '0', 10) || null;
+  const clearLate = Boolean(document.getElementById('upsertShiftClearLate')?.checked);
+  const note = (document.getElementById('upsertShiftNoteInput')?.value || '').trim();
+
+  if (!staffName || !dateStr) {
+    showToast('Vui lòng nhập đầy đủ Tên nhân sự và Ngày làm việc (DD/MM/YYYY)', 'error');
+    return;
+  }
+
+  const btn = document.getElementById('btnSubmitAdminUpsertShift');
+  const origText = btn ? btn.textContent : '';
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Đang lưu...';
+  }
+
+  try {
+    const token = localStorage.getItem('vnaigc_jwt') || localStorage.getItem('vnaigc_token') || '';
+    const res = await fetch('/api/v1/cc/attendance/admin/upsert-shift', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+      },
+      body: JSON.stringify({
+        record_id: recId || null,
+        staff_name: staffName,
+        date: dateStr,
+        shift_key: shiftKey,
+        checkin_time: checkinTime,
+        checkout_time: checkoutTime,
+        approved_minutes: durationMins,
+        clear_late: clearLate,
+        note: note || undefined
+      })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(data.detail || data.error || 'Không thể lưu điều chỉnh giờ công');
+    }
+
+    showToast(data.message || `Đã cập nhật giờ công (${checkinTime} ➔ ${checkoutTime}) cho ${staffName}!`, 'success');
+    closeAdminUpsertShiftModal();
+
+    // Refresh global data & re-render modals
+    if (typeof window.fetchLiveDashboardData === 'function') {
+      await window.fetchLiveDashboardData();
+    } else if (typeof window.loadData === 'function') {
+      await window.loadData();
+    } else if (typeof window.initDashboard === 'function') {
+      await window.initDashboard();
+    }
+    openStaffShiftsDetailModal(staffName);
+  } catch (err) {
+    showToast(safeErrorDetail(err, 'Lỗi khi lưu giờ công'), 'error');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = origText || 'Lưu Giờ Công Chính Xác';
+    }
+  }
 }
 export function setupStaffShiftsModalEvents() {
   const btnClose = document.getElementById("btnCloseStaffShifts");
@@ -1913,6 +2138,12 @@ if (typeof window !== 'undefined') window.deleteStaffLedger = deleteStaffLedger;
 
 export function setupLedgerEntryModal() {
   const modal = document.getElementById('ledgerEntrySheet');
+  if (modal && modal.dataset && modal.dataset.bound === 'true') return;
+  if (modal) {
+    if (!modal.dataset) modal.dataset = {};
+    modal.dataset.bound = 'true';
+  }
+
   const btnClose = document.getElementById('btnCloseLedgerSheet');
   const btnCloseX = document.getElementById('btnCloseLedgerX');
   const btnSubmit = document.getElementById('btnSubmitLedgerEntry');
@@ -1961,8 +2192,14 @@ export function setupLedgerEntryModal() {
     });
   });
 
-  if (btnSubmit) {
-    btnSubmit.addEventListener('click', async () => {
+  if (btnSubmit && (!btnSubmit.dataset || btnSubmit.dataset.bound !== 'true')) {
+    if (!btnSubmit.dataset) btnSubmit.dataset = {};
+    btnSubmit.dataset.bound = 'true';
+    btnSubmit.addEventListener('click', async (e) => {
+      if (btnSubmit.dataset && btnSubmit.dataset.submitting === 'true') {
+        if (e && typeof e.stopImmediatePropagation === 'function') e.stopImmediatePropagation();
+        return;
+      }
       const staffSelect = document.getElementById('ledgerStaffSelect');
       const monthSelect = document.getElementById('ledgerMonthSelect');
       const typeSelect = document.getElementById('ledgerTypeSelect');
@@ -1985,6 +2222,9 @@ export function setupLedgerEntryModal() {
       const methodVal = methodSelect?.value || 'cash';
       const reason = (reasonInput?.value || '').trim() || (typeVal === 'advance' ? 'Tạm ứng lương' : 'Ghi sổ phụ');
 
+      if (!btnSubmit.dataset) btnSubmit.dataset = {};
+      btnSubmit.dataset.submitting = 'true';
+      if (btnSubmit.style) btnSubmit.style.pointerEvents = 'none';
       btnSubmit.disabled = true;
       btnSubmit.textContent = 'Đang lưu...';
 
@@ -2046,6 +2286,8 @@ export function setupLedgerEntryModal() {
       } catch (err) {
         showToast(safeErrorDetail(err), 'error');
       } finally {
+        if (btnSubmit.dataset) btnSubmit.dataset.submitting = 'false';
+        if (btnSubmit.style) btnSubmit.style.pointerEvents = '';
         btnSubmit.disabled = false;
         btnSubmit.textContent = 'Lưu Bản Ghi';
       }
@@ -2134,5 +2376,10 @@ if (typeof window !== 'undefined') {
   window.previewPayslipZaloCard = previewPayslipZaloCard;
   window.sendBulkPayslipZaloCards = sendBulkPayslipZaloCards;
   window.loadStaffSoCaiLuong = loadStaffSoCaiLuong;
+  window.openStaffShiftsDetailModal = openStaffShiftsDetailModal;
+  window.openAdminUpsertShiftModal = openAdminUpsertShiftModal;
+  window.openAdminUpsertShiftFromEncoded = openAdminUpsertShiftFromEncoded;
+  window.closeAdminUpsertShiftModal = closeAdminUpsertShiftModal;
+  window.submitAdminUpsertShift = submitAdminUpsertShift;
 }
 

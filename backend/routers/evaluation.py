@@ -17,6 +17,7 @@ import json
 import random
 import logging
 import datetime
+import threading
 from typing import Optional, Dict, Any, List, Tuple
 from fastapi import APIRouter, Request, HTTPException
 
@@ -40,6 +41,9 @@ logger = logging.getLogger("evaluation_router")
 router = APIRouter(prefix="", tags=["Staff Evaluations"])
 _root_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+_eval_dedup_lock = threading.Lock()
+_eval_dedup_cache: Dict[str, Tuple[float, Dict[str, Any]]] = {}
+
 
 def get_evaluations_file() -> str:
     if os.getenv("EVAL_LOGS_FILE"):
@@ -61,6 +65,8 @@ def load_evaluations() -> List[Dict[str, Any]]:
 
 
 def save_evaluations(evals: List[Dict[str, Any]]) -> None:
+    if not evals:
+        _eval_dedup_cache.clear()
     try:
         from services.db import insert_evaluation, clear_evaluations_db
         if not evals:
@@ -164,9 +170,6 @@ def record_staff_evaluation(request: Request, payload: StaffEvaluationRequest):
             detail="Vui lòng nêu rõ lý do đánh giá / thưởng phạt (tối thiểu 3 ký tự)."
         )
 
-    evals = load_evaluations()
-    eval_id = f"EVAL_{int(time.time())}_{random.randint(1000, 9999)}"
-    
     month = str(datetime.datetime.now().month)
     try:
         dt = datetime.datetime.strptime(payload.date, "%Y-%m-%d")
@@ -185,78 +188,136 @@ def record_staff_evaluation(request: Request, payload: StaffEvaluationRequest):
     is_bonus = "thuong" in normalize_str(payload.type)
     status = "APPROVED" if role == "ADMIN" else "PENDING"
 
-    if role == "MANAGER" and is_bonus:
-        if payload.amount > 1000000:
-            raise HTTPException(
-                status_code=400,
-                detail="Quản lý chỉ được đề xuất thưởng tối đa 1,000,000đ cho mỗi nhân viên một lần."
-            )
-        emp_monthly_bonus = sum(
-            int(e.get("amount") or 0) for e in evals
-            if str(e.get("month", "")).strip() == str(month).strip()
-            and normalize_str(e.get("staffName")) == normalize_str(payload.staff_name)
-            and "thuong" in normalize_str(e.get("type", ""))
-            and e.get("status") in ["PENDING", "APPROVED", "ACTIVE"]
-        )
-        if emp_monthly_bonus + payload.amount > 1000000:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Tổng mức thưởng của nhân viên {payload.staff_name} trong tháng {month} do Quản lý đề xuất vượt hạn mức 1,000,000đ/tháng (Hiện tại đã có: {emp_monthly_bonus:,}đ)."
-            )
+    staff_clean = payload.staff_name.strip()
+    reason_clean = payload.reason.strip()
+    creator_sub = user.get("sub") or ""
+    dedup_key = f"{normalize_str(staff_clean)}:{normalize_str(payload.type)}:{int(payload.amount)}:{month}:{normalize_str(reason_clean)}:{normalize_str(creator_sub)}"
 
-        total_proposed_month = sum(
-            int(e.get("amount", 0)) for e in evals
-            if "thuong" in normalize_str(e.get("type", ""))
-            and str(e.get("month", "")).strip() == str(month).strip()
-            and e.get("createdByRole") == "MANAGER"
-            and e.get("status") in ["PENDING", "APPROVED", "ACTIVE"]
-        )
-        if total_proposed_month + payload.amount > 3000000:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Hạn mức quỹ thưởng Quản lý đề xuất tháng {month} đã đạt trần (Tối đa 3.000.000đ/tháng). Đã đề xuất: {total_proposed_month:,}đ."
+    with _eval_dedup_lock:
+        now_ts = time.time()
+        expired_keys = [k for k, (t_val, _) in _eval_dedup_cache.items() if now_ts - t_val > 30.0]
+        for k in expired_keys:
+            _eval_dedup_cache.pop(k, None)
+
+        evals = load_evaluations()
+
+        # 1. Check in-memory dedup cache (5-second window)
+        if dedup_key in _eval_dedup_cache:
+            last_ts, last_entry = _eval_dedup_cache[dedup_key]
+            if now_ts - last_ts < 5.0 and any(e.get("id") == last_entry.get("id") for e in evals):
+                logger.info(
+                    f"Idempotent eval dedup triggered for '{dedup_key}' ({now_ts - last_ts:.3f}s ago). "
+                    f"Returning existing evaluation '{last_entry.get('id')}' without duplicate insert."
+                )
+                return {
+                    "success": True,
+                    "message": f"Đã ghi nhận {payload.type} cho {payload.staff_name} ({status}).",
+                    "entry": last_entry,
+                    "dedup": True
+                }
+
+        # 2. Check recently persisted evaluations (cross-worker resilience within 5 seconds)
+        for existing_ev in reversed(evals[-10:]):
+            if (
+                normalize_str(existing_ev.get("staffName", "")) == normalize_str(staff_clean)
+                and normalize_str(existing_ev.get("type", "")) == normalize_str(payload.type)
+                and int(existing_ev.get("amount") or 0) == int(payload.amount)
+                and str(existing_ev.get("month", "")).strip() == str(month).strip()
+                and normalize_str(existing_ev.get("reason", "")) == normalize_str(reason_clean)
+                and normalize_str(existing_ev.get("createdBy", "")) == normalize_str(creator_sub)
+            ):
+                c_at = existing_ev.get("createdAt")
+                if c_at:
+                    try:
+                        dt_c = datetime.datetime.fromisoformat(str(c_at).replace("Z", "+00:00"))
+                        now_dt = datetime.datetime.now(dt_c.tzinfo)
+                        if abs((now_dt - dt_c).total_seconds()) < 5.0:
+                            _eval_dedup_cache[dedup_key] = (now_ts, existing_ev)
+                            logger.info(f"Persisted eval dedup triggered for '{dedup_key}'. Returning '{existing_ev.get('id')}'.")
+                            return {
+                                "success": True,
+                                "message": f"Đã ghi nhận {payload.type} cho {payload.staff_name} ({status}).",
+                                "entry": existing_ev,
+                                "dedup": True
+                            }
+                    except Exception:
+                        pass
+
+        if role == "MANAGER" and is_bonus:
+            if payload.amount > 1000000:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Quản lý chỉ được đề xuất thưởng tối đa 1,000,000đ cho mỗi nhân viên một lần."
+                )
+            emp_monthly_bonus = sum(
+                int(e.get("amount") or 0) for e in evals
+                if str(e.get("month", "")).strip() == str(month).strip()
+                and normalize_str(e.get("staffName")) == normalize_str(payload.staff_name)
+                and "thuong" in normalize_str(e.get("type", ""))
+                and e.get("status") in ["PENDING", "APPROVED", "ACTIVE"]
             )
+            if emp_monthly_bonus + payload.amount > 1000000:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Tổng mức thưởng của nhân viên {payload.staff_name} trong tháng {month} do Quản lý đề xuất vượt hạn mức 1,000,000đ/tháng (Hiện tại đã có: {emp_monthly_bonus:,}đ)."
+                )
 
-    entry = {
-        "id": eval_id,
-        "staffName": payload.staff_name.strip(),
-        "date": payload.date,
-        "shift": payload.shift,
-        "type": payload.type,
-        "amount": payload.amount,
-        "reason": payload.reason.strip(),
-        "notes": (payload.notes or "").strip(),
-        "ratings": payload.ratings or {},
-        "redFlags": payload.red_flags or [],
-        "createdBy": user.get("sub"),
-        "createdByName": user.get("name") or user.get("sub"),
-        "createdByRole": role,
-        "createdAt": datetime.datetime.now().isoformat(),
-        "status": status,
-        "month": month
-    }
-
-    evals.append(entry)
-    save_evaluations(evals)
-
-    # Sync to immutable audit ledger so_cai_luong if APPROVED
-    if status == "APPROVED":
-        try:
-            from services.db import record_so_cai_luong, get_db_path, DEFAULT_TENANT_ID
-            db_target = os.getenv("SQLITE_DB_PATH") or get_db_path()
-            loai_sk = "THUONG" if is_bonus else "PHAT"
-            record_so_cai_luong(
-                tenant_id=DEFAULT_TENANT_ID,
-                nhan_vien_id=payload.staff_name.strip(),
-                staff_name=payload.staff_name.strip(),
-                loai_su_kien=loai_sk,
-                so_tien_thay_doi=payload.amount,
-                ly_do=payload.reason.strip(),
-                nguoi_tao=user.get("name") or user.get("sub", "Admin"),
-                db_path=db_target
+            total_proposed_month = sum(
+                int(e.get("amount", 0)) for e in evals
+                if "thuong" in normalize_str(e.get("type", ""))
+                and str(e.get("month", "")).strip() == str(month).strip()
+                and e.get("createdByRole") == "MANAGER"
+                and e.get("status") in ["PENDING", "APPROVED", "ACTIVE"]
             )
-        except Exception as se:
-            logger.warning(f"Failed to record so_cai_luong: {se}")
+            if total_proposed_month + payload.amount > 3000000:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Hạn mức quỹ thưởng Quản lý đề xuất tháng {month} đã đạt trần (Tối đa 3.000.000đ/tháng). Đã đề xuất: {total_proposed_month:,}đ."
+                )
+
+        eval_id = f"EVAL_{int(time.time())}_{random.randint(1000, 9999)}"
+        entry = {
+            "id": eval_id,
+            "staffName": staff_clean,
+            "date": payload.date,
+            "shift": payload.shift,
+            "type": payload.type,
+            "amount": payload.amount,
+            "reason": reason_clean,
+            "notes": (payload.notes or "").strip(),
+            "ratings": payload.ratings or {},
+            "redFlags": payload.red_flags or [],
+            "createdBy": user.get("sub"),
+            "createdByName": user.get("name") or user.get("sub"),
+            "createdByRole": role,
+            "createdAt": datetime.datetime.now().isoformat(),
+            "status": status,
+            "month": month
+        }
+
+        evals.append(entry)
+        save_evaluations(evals)
+        _eval_dedup_cache[dedup_key] = (now_ts, entry)
+
+        # Sync to immutable audit ledger so_cai_luong if APPROVED
+        if status == "APPROVED":
+            try:
+                from services.db import record_so_cai_luong, get_db_path, DEFAULT_TENANT_ID
+                db_target = os.getenv("SQLITE_DB_PATH") or get_db_path()
+                loai_sk = "THUONG" if is_bonus else "PHAT"
+                record_so_cai_luong(
+                    tenant_id=DEFAULT_TENANT_ID,
+                    nhan_vien_id=staff_clean,
+                    staff_name=staff_clean,
+                    loai_su_kien=loai_sk,
+                    so_tien_thay_doi=payload.amount,
+                    ly_do=reason_clean,
+                    nguoi_tao=user.get("name") or user.get("sub", "Admin"),
+                    idempotency_key=f"EVAL_{eval_id}",
+                    db_path=db_target
+                )
+            except Exception as se:
+                logger.warning(f"Failed to record so_cai_luong: {se}")
 
     try:
         status_text = "ĐÃ DUYỆT" if status == "APPROVED" else "CHỜ ADMIN DUYỆT"
@@ -375,6 +436,7 @@ def review_staff_evaluation(request: Request, payload: ApproveEvaluationRequest)
                 so_tien_thay_doi=int(target_eval.get("amount", 0)),
                 ly_do=target_eval.get("reason", "") or "Admin duyệt đánh giá",
                 nguoi_tao=user.get("name") or user.get("sub", "Admin"),
+                idempotency_key=f"EVAL_{payload.eval_id}",
                 db_path=db_target
             )
         except Exception as se:

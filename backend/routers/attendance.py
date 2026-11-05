@@ -171,6 +171,7 @@ from models.attendance import (
     CheckinPayload,
     CheckoutPayload,
     ManualClosePayload,
+    AdminUpsertShiftPayload,
     ShiftActionPayload,
     ReviewHangingShiftPayload,
     AttendanceRequestCreate,
@@ -660,13 +661,57 @@ def checkin_attendance(request: Request, payload: CheckinPayload):
     dt_limit = datetime.strptime(f"{today_date} {limit_str}:59", "%Y-%m-%d %H:%M:%S")
     dt_start = datetime.strptime(f"{today_date} {start_str}", "%Y-%m-%d %H:%M")
     
-    if now > dt_limit:
+    if roster_slot_info and roster_slot_info.get("is_reinforcement"):
+        is_late = False
+        late_mins = 0
+    elif now > dt_limit:
         is_late = True
         diff = (now - dt_start).total_seconds() / 60
         late_mins = int(max(0, diff))
 
     with _logs_lock:
         logs = load_attendance_logs()
+
+        # Tự động nhận diện đổi khung giờ 17:00 (service_17) <-> 18:00 (service_18) trong cùng ca tối:
+        # 1) Nhân viên xếp service_18 (18:00) nhưng đến check-in ở khung 17:00 (<= 17:20)
+        #    -> Tự động áp dụng khung 17:00 (scheduled_start='17:00', tolerance_limit='17:10') để không bị cắt mất 60p đầu ca.
+        # 2) Nhân viên xếp service_17 (17:00) nhưng đến check-in ở khung 18:00 (17:30 - 18:10)
+        #    và đã có đồng nghiệp khác check-in khung 17:00 trước đó trong cùng ca tối
+        #    -> Tự động chuyển sang khung 18:00 (scheduled_start='18:00', tolerance_limit='18:10', không tính phạt trễ).
+        if shift_key == "toi" and slot_type in ("service_17", "service_18"):
+            cin_mins_now = now.hour * 60 + now.minute
+            if slot_type == "service_18" and cin_mins_now <= (17 * 60 + 20):
+                slot_type = "service_17"
+                start_str = "17:00"
+                limit_str = "17:10"
+                dt_limit = datetime.strptime(f"{today_date} {limit_str}:59", "%Y-%m-%d %H:%M:%S")
+                dt_start = datetime.strptime(f"{today_date} {start_str}", "%Y-%m-%d %H:%M")
+                is_late = now > dt_limit
+                late_mins = int(max(0, (now - dt_start).total_seconds() / 60)) if is_late else 0
+            elif slot_type == "service_17" and (17 * 60 + 30) <= cin_mins_now <= (18 * 60 + 10):
+                has_early_evening_peer = False
+                for lg in logs:
+                    if (lg.get("date") == today_str and
+                        lg.get("shift_key") == "toi" and
+                        lg.get("username") != payload.username and
+                        lg.get("status") not in ("CANCELLED", "CANCELLED_MISTAKE")):
+                        lg_cin = str(lg.get("checkin_time") or "")
+                        if ":" in lg_cin:
+                            try:
+                                h_p, m_p = map(int, lg_cin.split(":")[:2])
+                                if (h_p * 60 + m_p) <= (17 * 60 + 25):
+                                    has_early_evening_peer = True
+                                    break
+                            except Exception:
+                                pass
+                if has_early_evening_peer:
+                    slot_type = "service_18"
+                    start_str = "18:00"
+                    limit_str = "18:10"
+                    dt_limit = datetime.strptime(f"{today_date} {limit_str}:59", "%Y-%m-%d %H:%M:%S")
+                    dt_start = datetime.strptime(f"{today_date} {start_str}", "%Y-%m-%d %H:%M")
+                    is_late = now > dt_limit
+                    late_mins = int(max(0, (now - dt_start).total_seconds() / 60)) if is_late else 0
         
         # Check if already checked in and currently in progress
         for log in logs:
@@ -720,6 +765,7 @@ def checkin_attendance(request: Request, payload: CheckinPayload):
             "shift_key": shift_key,
             "shift_name": shift_name,
             "roster_slot": slot_type,
+            "is_reinforcement": bool(roster_slot_info and roster_slot_info.get("is_reinforcement")),
             "scheduled_start": start_str,
             "scheduled_end": scheduled_end,
             "checkin_time": time_str,
@@ -972,11 +1018,16 @@ def review_hanging_shift(request: Request, payload: ReviewHangingShiftPayload):
         if not target:
             raise HTTPException(status_code=404, detail="Không tìm thấy bản ghi chấm công cần duyệt.")
 
+        if payload.approved_checkin_time and str(payload.approved_checkin_time).strip():
+            target["checkin_time"] = str(payload.approved_checkin_time).strip()
         target["checkout_time"] = payload.approved_checkout_time
         target["total_mins"] = payload.approved_minutes
         target["effective_duration_mins"] = payload.approved_minutes
         target["is_hanging_pending"] = False
         target["status"] = "DA_DUYET"
+        if payload.clear_late:
+            target["is_late"] = False
+            target["late_mins"] = 0
         target["closed_by"] = f"MGR_{manager_name}"
         target["note"] = payload.note or f"Duyệt bởi {manager_name}"
         target["updated_at"] = datetime.now().isoformat()
@@ -1070,7 +1121,7 @@ def get_pending_checkouts(auth: Dict[str, Any] = Depends(verify_manager_or_admin
 
 @router.post("/manager/manual-close")
 def manual_close_shift(payload: ManualClosePayload, auth: Dict[str, Any] = Depends(verify_manager_or_admin)):
-    """Manager manually resolves an unclosed shift."""
+    """Manager manually resolves an unclosed shift (supports custom checkin/checkout and approved minutes)."""
     with _logs_lock:
         logs = load_attendance_logs()
         found = None
@@ -1081,20 +1132,280 @@ def manual_close_shift(payload: ManualClosePayload, auth: Dict[str, Any] = Depen
                 
         if not found:
             raise HTTPException(status_code=404, detail="Không tìm thấy bản ghi ca làm việc.")
+
+        if payload.manual_checkin and str(payload.manual_checkin).strip():
+            found["checkin_time"] = str(payload.manual_checkin).strip()
             
         diff_mins = calculate_shift_duration_minutes(
             found.get("date", datetime.now().strftime("%d/%m/%Y")), 
             found.get("checkin_time", "06:00"), 
             payload.manual_checkout
         )
+        eff_mins = int(payload.approved_minutes) if (payload.approved_minutes is not None and payload.approved_minutes > 0) else diff_mins
         found["checkout_time"] = payload.manual_checkout
         found["total_mins"] = diff_mins
+        found["effective_duration_mins"] = eff_mins
+        found["is_hanging_pending"] = False
+        if payload.clear_late:
+            found["is_late"] = False
+            found["late_mins"] = 0
+            found["status"] = "ON_TIME"
+        elif found.get("status") == "QUEN_CHECKOUT":
+            found["status"] = "DA_DUYET"
         found["closed_by"] = f"MANAGER_{auth.get('sub', 'MANUAL')}"
         found["manager_note"] = payload.manager_note
+        if payload.manager_note:
+            found["note"] = payload.manager_note
         found["updated_at"] = datetime.now().isoformat()
         
         save_attendance_logs(logs)
-        return {"status": "success", "message": f"Đã chốt giờ ra thành công ({diff_mins} phút).", "record": found}
+        return {"status": "success", "message": f"Đã chốt giờ ra thành công ({eff_mins} phút).", "record": found}
+
+
+@router.post("/admin/upsert-shift")
+def admin_upsert_shift(payload: AdminUpsertShiftPayload, auth: Dict[str, Any] = Depends(verify_manager_or_admin)):
+    """
+    Admin / Manager trực tiếp chỉnh sửa giờ Vào/Ra chính xác của bất kỳ ca nào
+    hoặc thêm bổ sung ca mới khi nhân viên quên cả Check-in lẫn Check-out.
+    Đồng bộ 100% giữa SQLite attendance_logs, shift_approvals và so_cai_luong.
+    """
+    actor_name = auth.get("name") or auth.get("sub") or "Admin"
+    raw_date = payload.date or payload.date_str or ""
+    ddmmyyyy, date_variants = _parse_date_variants(raw_date)
+    cin = str(payload.checkin_time).strip()[:5]
+    cout = str(payload.checkout_time).strip()[:5]
+
+    s_raw = str(payload.shift_name or payload.shift_key or "sang").strip()
+    s_low = normalize_str(s_raw)
+    if "toi" in s_low or "chieu" in s_low:
+        shift_key = "toi"
+        shift_name = "Ca Tối"
+    else:
+        shift_key = "sang"
+        shift_name = "Ca Sáng"
+
+    auth_data = load_staff_auth()
+    staff_accs = auth_data.get("staff_accounts", {})
+
+    # Resolve target username & display_name
+    target_u = str(payload.username or "").strip().lower()
+    target_display = str(payload.staff_name or "").strip()
+    target_acc = None
+
+    if target_u and target_u in staff_accs:
+        target_acc = staff_accs[target_u]
+    else:
+        search_norm = normalize_str(target_display or target_u)
+        for uk, av in staff_accs.items():
+            if not isinstance(av, dict):
+                continue
+            fn_norm = normalize_str(av.get("full_name", ""))
+            al_norms = [normalize_str(x) for x in (av.get("aliases", []) + av.get("sheet_names", []))]
+            if search_norm and (search_norm == normalize_str(uk) or search_norm == fn_norm or search_norm in al_norms):
+                target_u = uk
+                target_acc = av
+                break
+
+    if target_acc and not target_display:
+        target_display = target_acc.get("full_name") or target_u
+    if not target_u:
+        target_u = normalize_str(target_display) or "staff"
+
+    diff_mins = calculate_shift_duration_minutes(ddmmyyyy, cin, cout)
+    req_mins = payload.approved_minutes if (payload.approved_minutes is not None and payload.approved_minutes > 0) else payload.effective_duration_mins
+    eff_mins = int(req_mins) if (req_mins is not None and req_mins > 0) else diff_mins
+    hourly_rate = int((target_acc or {}).get("hourly_rate") or 17000)
+
+    # Calculate late status unless clear_late is requested
+    sched_start = "06:00" if shift_key == "sang" else ("18:00" if cin >= "17:30" else "17:00")
+    sched_end = "11:30" if shift_key == "sang" else "23:00"
+    late_mins = 0
+    is_late = False
+    if not payload.clear_late:
+        try:
+            h_in, m_in = map(int, cin.split(":"))
+            h_st, m_st = map(int, sched_start.split(":"))
+            in_m = h_in * 60 + m_in
+            st_m = h_st * 60 + m_st
+            if in_m > st_m + 10:
+                is_late = True
+                late_mins = in_m - st_m
+        except Exception:
+            pass
+
+    now_iso = datetime.now().isoformat()
+
+    with _logs_lock:
+        logs = load_attendance_logs()
+        matched_log = None
+
+        if payload.record_id:
+            for lg in logs:
+                if str(lg.get("id")) == str(payload.record_id):
+                    matched_log = lg
+                    break
+
+        if matched_log is None:
+            for lg in reversed(logs):
+                lu = str(lg.get("username") or "").strip().lower()
+                ld = str(lg.get("date") or "").strip()
+                ls = normalize_str(str(lg.get("shift_key") or lg.get("shift_name") or lg.get("shift") or ""))
+                ls_key = "toi" if ("toi" in ls or "chieu" in ls) else "sang"
+                if lu == target_u and ld in date_variants and ls_key == shift_key:
+                    matched_log = lg
+                    break
+
+        if matched_log is not None:
+            matched_log["date"] = ddmmyyyy
+            matched_log["shift_key"] = shift_key
+            matched_log["shift_name"] = shift_name
+            matched_log["checkin_time"] = cin
+            matched_log["checkin"] = cin
+            matched_log["checkout_time"] = cout
+            matched_log["checkout"] = cout
+            matched_log["total_mins"] = diff_mins
+            matched_log["duration_mins"] = diff_mins
+            matched_log["effective_duration_mins"] = eff_mins
+            matched_log["scheduled_start"] = sched_start
+            matched_log["scheduled_end"] = sched_end
+            matched_log["is_hanging_pending"] = False
+            matched_log["is_late"] = is_late
+            matched_log["late_mins"] = late_mins
+            matched_log["status"] = "LATE" if is_late else "ON_TIME"
+            matched_log["closed_by"] = f"ADMIN_{actor_name}"
+            matched_log["note"] = payload.note or f"Chỉnh giờ bởi {actor_name}"
+            matched_log["updated_at"] = now_iso
+            record_out = matched_log
+        else:
+            rec_id = f"ATT_{datetime.now().strftime('%Y%m%d%H%M%S')}_{target_u}"
+            new_log = {
+                "id": rec_id,
+                "username": target_u,
+                "display_name": target_display or target_u,
+                "role": (target_acc or {}).get("position") or "Phục vụ",
+                "date": ddmmyyyy,
+                "shift_key": shift_key,
+                "shift_name": shift_name,
+                "scheduled_start": sched_start,
+                "scheduled_end": sched_end,
+                "checkin_time": cin,
+                "checkout_time": cout,
+                "total_mins": diff_mins,
+                "effective_duration_mins": eff_mins,
+                "hourly_rate_snapshot": hourly_rate,
+                "is_hanging_pending": False,
+                "is_late": is_late,
+                "late_mins": late_mins,
+                "status": "LATE" if is_late else "ON_TIME",
+                "closed_by": f"ADMIN_{actor_name}",
+                "note": payload.note or f"Thêm/chỉnh ca bởi {actor_name}",
+                "created_at": now_iso,
+                "updated_at": now_iso,
+            }
+            logs.append(new_log)
+            record_out = new_log
+
+        save_attendance_logs(logs)
+
+        # Update SQLite attendance_logs directly (including checkin & late_mins)
+        try:
+            conn = get_db_connection()
+            if conn:
+                try:
+                    cur = conn.cursor()
+                    cur.execute("""
+                        SELECT id FROM attendance_logs
+                        WHERE username = ? AND date = ? AND (shift = ? OR shift = ? OR shift = ?)
+                        ORDER BY id DESC LIMIT 1
+                    """, (target_u, ddmmyyyy, shift_name, shift_key, shift_name.replace("Ca ", "")))
+                    row = cur.fetchone()
+                    if row:
+                        cur.execute("""
+                            UPDATE attendance_logs
+                            SET checkin = ?, checkout = ?, duration_mins = ?, effective_duration_mins = ?,
+                                scheduled_start = ?, scheduled_end = ?, status = ?, is_late = ?, late_mins = ?,
+                                is_hanging_pending = 0, note = ?
+                            WHERE id = ?
+                        """, (
+                            cin, cout, diff_mins, eff_mins, sched_start, sched_end,
+                            "LATE" if is_late else "ON_TIME", 1 if is_late else 0, late_mins,
+                            payload.note or f"Chỉnh giờ bởi {actor_name}", row["id"]
+                        ))
+                    conn.commit()
+                finally:
+                    conn.close()
+        except Exception as e:
+            print(f"[Admin Upsert Shift SQLite Warning]: {e}")
+
+        # Sync shift_approvals so payroll_calc honors eff_mins
+        try:
+            from routers.disbursement import get_data_file, load_shift_approvals, save_shift_approvals
+            from services.payroll_calc import get_canonical_name
+            from services.storage import is_runtime_json_sync_enabled
+            canon_name = get_canonical_name(target_display or target_u, staff_accs)
+            if is_runtime_json_sync_enabled():
+                d_file = get_data_file()
+                if d_file and os.path.exists(d_file):
+                    d_json = safe_json_read(d_file, default={})
+                    du_lieu = d_json.get("DỮ LIỆU", [])
+                    modified_data = False
+                    for r in du_lieu[1:]:
+                        if len(r) >= 7 and str(r[1]).strip() == ddmmyyyy:
+                            if get_canonical_name(str(r[2]).strip(), staff_accs) == canon_name:
+                                rs_low = normalize_str(str(r[3]))
+                                rs_key = "toi" if ("toi" in rs_low or "chieu" in rs_low) else "sang"
+                                if rs_key == shift_key:
+                                    r[4] = cin
+                                    r[5] = cout
+                                    r[6] = str(eff_mins)
+                                    if len(r) > 7:
+                                        r[7] = payload.note or r[7]
+                                    if len(r) > 9:
+                                        r[9] = str(late_mins)
+                                    modified_data = True
+                                    break
+                    if modified_data:
+                        safe_json_write(d_file, d_json)
+
+            approvals = load_shift_approvals()
+            sh_short = "Sáng" if shift_key == "sang" else "Tối"
+            for s_lbl in (shift_name, sh_short):
+                app_key = f"{ddmmyyyy}|{canon_name}|{s_lbl}|{cin}"
+                approvals[app_key] = {
+                    "status": "APPROVE",
+                    "approved_mins": eff_mins,
+                    "manager": actor_name,
+                    "note": payload.note or f"Chỉnh giờ Vào {cin} - Ra {cout}",
+                    "updated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                }
+            save_shift_approvals(approvals)
+        except Exception as e:
+            print(f"[Admin Upsert Shift Sync Warning]: {e}")
+
+        # Record immutable ledger audit
+        try:
+            from services.db import record_so_cai_luong, get_db_path, DEFAULT_TENANT_ID
+            record_so_cai_luong(
+                tenant_id=DEFAULT_TENANT_ID,
+                nhan_vien_id=target_u,
+                staff_name=target_display or target_u,
+                cham_cong_id=str(record_out.get("id") or ""),
+                loai_su_kien="DIEU_CHINH_GIO",
+                so_gio_thay_doi=round(eff_mins / 60.0, 2),
+                muc_luong_ap_dung=hourly_rate,
+                ly_do=f"{payload.note or 'Admin chỉnh giờ'} ({ddmmyyyy} {shift_name}: {cin} -> {cout}, {eff_mins}p)",
+                nguoi_tao=actor_name,
+                db_path=os.getenv("SQLITE_DB_PATH") or get_db_path()
+            )
+        except Exception:
+            pass
+
+    return {
+        "status": "success",
+        "success": True,
+        "message": f"Đã lưu ca {shift_name} ngày {ddmmyyyy} ({cin} ➔ {cout} • {eff_mins} phút) cho {target_display or target_u}.",
+        "record": record_out
+    }
 
 
 @router.get("/manager/auto-close-check")

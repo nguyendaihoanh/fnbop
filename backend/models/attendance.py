@@ -29,7 +29,26 @@ class CheckoutPayload(BaseModel):
 class ManualClosePayload(BaseModel):
     record_id: Union[str, int] = Field(..., description="ID bản ghi (chuỗi hoặc số)")
     manual_checkout: str = Field(..., min_length=1)
+    manual_checkin: Optional[str] = None
+    approved_minutes: Optional[int] = None
+    clear_late: Optional[bool] = None
     manager_note: Optional[str] = None
+
+
+class AdminUpsertShiftPayload(BaseModel):
+    record_id: Optional[Union[str, int]] = None
+    username: Optional[str] = None
+    staff_name: Optional[str] = None
+    date: Optional[str] = None  # DD/MM/YYYY or YYYY-MM-DD
+    date_str: Optional[str] = None  # Alias
+    shift_key: Optional[str] = "sang"
+    shift_name: Optional[str] = None
+    checkin_time: str = Field(..., min_length=1)  # HH:MM
+    checkout_time: str = Field(..., min_length=1)  # HH:MM
+    approved_minutes: Optional[int] = None
+    effective_duration_mins: Optional[int] = None  # Alias
+    clear_late: Optional[bool] = False
+    note: Optional[str] = "Admin điều chỉnh giờ công thực tế"
 
 
 class ShiftActionPayload(BaseModel):
@@ -41,8 +60,10 @@ class ShiftActionPayload(BaseModel):
 
 class ReviewHangingShiftPayload(BaseModel):
     record_id: Union[str, int] = Field(..., description="ID bản ghi (chuỗi hoặc số)")
+    approved_checkin_time: Optional[str] = None
     approved_checkout_time: str = Field(..., min_length=1)
     approved_minutes: int = Field(..., ge=0)
+    clear_late: Optional[bool] = None
     note: Optional[str] = "Quản lý duyệt giờ ra thực tế cho ca quên checkout"
 
 

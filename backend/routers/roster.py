@@ -104,6 +104,7 @@ from models.roster import (
     AutoFillRequest,
     ClonePreviousWeekRequest,
     UpdateShiftSlotRequest,
+    ReinforcementRequest,
     PublishWeekRequest,
     PeerSwapRequest,
     PeerSwapRespondRequest,
@@ -571,7 +572,11 @@ def clone_previous_week_schedule(request: Request, data: ClonePreviousWeekReques
         src_day = source_info["days"][i]
         tgt_day = target_info["days"][i]
         if src_day in source_shifts:
-            target_week["shifts"][tgt_day] = json.loads(json.dumps(source_shifts[src_day]))
+            cloned_day = json.loads(json.dumps(source_shifts[src_day]))
+            for p_key in ["morning", "evening", "afternoon"]:
+                if isinstance(cloned_day.get(p_key), dict):
+                    cloned_day[p_key].pop("reinforcements", None)
+            target_week["shifts"][tgt_day] = cloned_day
             cloned_days_count += 1
 
     target_week["status"] = "DRAFT"
@@ -734,6 +739,33 @@ def update_shift_slot(request: Request, data: UpdateShiftSlotRequest):
             elif idx == 1:
                 target["service_18"] = target_user
 
+    # 4. REINFORCEMENT (Nhân sự tăng cường đột xuất)
+    elif slot_clean == "reinforcement" or slot_clean.startswith("reinforcement"):
+        reinforcements = target.setdefault("reinforcements", [])
+        if target_user:
+            assigned_in_shift = set()
+            if target.get("manager"): assigned_in_shift.add(str(target["manager"]).lower())
+            if target.get("barista"): assigned_in_shift.add(str(target["barista"]).lower())
+            for s in (target.get("baristas") or []):
+                if s: assigned_in_shift.add(str(s).lower())
+            for s in (target.get("service") or []):
+                if s: assigned_in_shift.add(str(s).lower())
+            for r in reinforcements:
+                r_u = r.get("username") if isinstance(r, dict) else r
+                if r_u: assigned_in_shift.add(str(r_u).lower())
+
+            if target_user.lower() in assigned_in_shift:
+                raise HTTPException(status_code=400, detail="Nhân sự đã có mặt trong ca trực này")
+
+            acc_info = accounts.get(target_user) or accounts.get(data.username) or {}
+            reinforcements.append({
+                "username": target_user,
+                "full_name": acc_info.get("full_name") or target_user,
+                "role": "Phục vụ",
+                "added_at": datetime.datetime.now().isoformat(),
+                "added_by": user.get("sub", "MANAGER")
+            })
+
     # Two-way sync: Synchronize updated slot into week_entry["days"] structure
     try:
         dt_val = datetime.datetime.strptime(data.date, "%Y-%m-%d").date()
@@ -745,6 +777,7 @@ def update_shift_slot(request: Request, data: UpdateShiftSlotRequest):
             p_obj = d_obj.setdefault(period_key, {})
             p_obj["barista"] = target.get("baristas", [target.get("barista")]) if (target.get("barista") or target.get("baristas")) else []
             p_obj["service"] = [s for s in target.get("service", []) if s]
+            p_obj["reinforcements"] = [r for r in target.get("reinforcements", []) if r]
             if period == "evening":
                 p_obj["service_17"] = target.get("service_17")
                 p_obj["service_18"] = target.get("service_18")
@@ -756,6 +789,135 @@ def update_shift_slot(request: Request, data: UpdateShiftSlotRequest):
     return {
         "success": True,
         "message": f"Đã cập nhật ca ngày {data.date} ({period} - {slot})",
+        "day_shift": day_shift
+    }
+
+
+@router.post("/add-reinforcement")
+def add_reinforcement_slot(request: Request, data: ReinforcementRequest):
+    """
+    Quản lý/Admin thêm nhân sự tăng cường (Backup / Onboarding / Lễ) vào ca cụ thể.
+    Không bị gò bó định biên chuẩn, không bị Auto-solver tự động điền.
+    """
+    auth_header = request.headers.get("Authorization")
+    if not auth_header or not auth_header.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    user = get_current_user(auth_header.split(" ")[1])
+    if user.get("role") not in ["ADMIN", "MANAGER"]:
+        raise HTTPException(status_code=403, detail="Chỉ Quản lý hoặc Admin mới có quyền thêm nhân sự tăng cường")
+
+    active_info, next_info = get_active_and_next_week_ids()
+    target_week_id = active_info["week_id"] if data.week_id == "current" else (next_info["week_id"] if data.week_id in [None, "next"] else data.week_id)
+
+    roster_data = load_roster_data()
+    week_entry = roster_data.get("weeks", {}).get(target_week_id)
+    if not week_entry:
+        raise HTTPException(status_code=404, detail="Không tìm thấy dữ liệu tuần")
+
+    staff_auth = load_staff_auth()
+    accounts = staff_auth.get("staff_accounts", {})
+    target_user = normalize_str(data.username)
+    found_acc = accounts.get(data.username) or accounts.get(target_user)
+    if not found_acc:
+        for k, a in accounts.items():
+            if str(data.username).lower() == k.lower() or target_user == normalize_str(k) or target_user in [normalize_str(al) for al in a.get("aliases", [])]:
+                found_acc = a
+                target_user = k
+                break
+    if not found_acc or found_acc.get("status") == "INACTIVE":
+        raise HTTPException(status_code=400, detail="Nhân sự phân ca không hợp lệ hoặc đã nghỉ việc")
+
+    canonical_username = target_user
+
+    shifts = week_entry.setdefault("shifts", {})
+    day_shift = shifts.setdefault(data.date, {
+        "morning": {"time": "06:00 - 11:30", "manager": None, "barista": None, "service": []},
+        "evening": {"time": "17:00 - 23:00", "manager": None, "barista": None, "service": [], "service_17": None, "service_18": None}
+    })
+
+    period = data.shift_period.lower()
+    if period not in ["morning", "evening"]:
+        raise HTTPException(status_code=400, detail="Ca làm việc không hợp lệ (morning/evening)")
+
+    target_shift = day_shift.setdefault(period, {})
+    reinforcements = target_shift.setdefault("reinforcements", [])
+
+    # Chống trùng lặp nhân sự trong ca
+    assigned_in_shift = set()
+    if target_shift.get("manager"): assigned_in_shift.add(str(target_shift["manager"]).lower())
+    if target_shift.get("barista"): assigned_in_shift.add(str(target_shift["barista"]).lower())
+    for s in (target_shift.get("baristas") or []):
+        if s: assigned_in_shift.add(str(s).lower())
+    for s in (target_shift.get("service") or []):
+        if s: assigned_in_shift.add(str(s).lower())
+    for r in reinforcements:
+        r_u = r.get("username") if isinstance(r, dict) else r
+        if r_u: assigned_in_shift.add(str(r_u).lower())
+
+    if canonical_username.lower() in assigned_in_shift:
+        raise HTTPException(status_code=400, detail=f"Nhân sự '{found_acc.get('full_name') or canonical_username}' đã có mặt trong ca trực này")
+
+    entry = {
+        "username": canonical_username,
+        "full_name": found_acc.get("full_name") or canonical_username,
+        "role": data.role or "Phục vụ",
+        "added_at": datetime.datetime.now().isoformat(),
+        "added_by": user.get("sub", "MANAGER")
+    }
+    reinforcements.append(entry)
+
+    save_roster_data(roster_data)
+    return {
+        "success": True,
+        "message": f"Đã thêm nhân sự tăng cường '{entry['full_name']}' vào ca thành công",
+        "reinforcement": entry,
+        "day_shift": day_shift
+    }
+
+
+@router.post("/remove-reinforcement")
+def remove_reinforcement_slot(request: Request, data: ReinforcementRequest):
+    """
+    Quản lý/Admin gỡ nhân sự tăng cường khỏi ca cụ thể.
+    """
+    auth_header = request.headers.get("Authorization")
+    if not auth_header or not auth_header.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    user = get_current_user(auth_header.split(" ")[1])
+    if user.get("role") not in ["ADMIN", "MANAGER"]:
+        raise HTTPException(status_code=403, detail="Chỉ Quản lý hoặc Admin mới có quyền gỡ nhân sự tăng cường")
+
+    active_info, next_info = get_active_and_next_week_ids()
+    target_week_id = active_info["week_id"] if data.week_id == "current" else (next_info["week_id"] if data.week_id in [None, "next"] else data.week_id)
+
+    roster_data = load_roster_data()
+    week_entry = roster_data.get("weeks", {}).get(target_week_id)
+    if not week_entry:
+        raise HTTPException(status_code=404, detail="Không tìm thấy dữ liệu tuần")
+
+    shifts = week_entry.setdefault("shifts", {})
+    day_shift = shifts.get(data.date, {})
+    period = data.shift_period.lower()
+    target_shift = day_shift.get(period, {})
+    reinforcements = target_shift.get("reinforcements", [])
+
+    target_user = normalize_str(data.username).lower()
+    new_reinforcements = []
+    removed = False
+    for r in reinforcements:
+        r_u = (r.get("username") if isinstance(r, dict) else str(r)).lower()
+        if r_u == target_user or normalize_str(r_u) == target_user:
+            removed = True
+        else:
+            new_reinforcements.append(r)
+
+    target_shift["reinforcements"] = new_reinforcements
+    save_roster_data(roster_data)
+
+    return {
+        "success": True,
+        "removed": removed,
+        "message": "Đã gỡ nhân sự tăng cường khỏi ca",
         "day_shift": day_shift
     }
 

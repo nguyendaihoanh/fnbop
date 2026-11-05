@@ -214,6 +214,73 @@ def resolve_employee_id_from_accounts(raw_name: str, staff_accounts: Optional[Di
     return ""
 
 
+def normalize_date_key(date_str: str) -> str:
+    """Normalize DD/MM/YYYY or YYYY-MM-DD into DD/MM/YYYY for consistent shift approval matching."""
+    raw = str(date_str or "").strip()
+    if not raw:
+        return ""
+    if "-" in raw:
+        parts = raw.split("-")
+        if len(parts) == 3 and len(parts[0]) == 4:
+            return f"{parts[2].zfill(2)}/{parts[1].zfill(2)}/{parts[0]}"
+    if "/" in raw:
+        parts = raw.split("/")
+        if len(parts) == 3:
+            return f"{parts[0].zfill(2)}/{parts[1].zfill(2)}/{parts[2]}"
+    return raw
+
+
+def _lookup_shift_approval(
+    shift_approvals: Dict[str, Any],
+    date_str: str,
+    canonical_name: str,
+    shift_name: str,
+    checkin_str: str,
+    staff_accounts: Optional[Dict[str, Any]] = None
+) -> Dict[str, Any]:
+    """
+    Tra cứu quyết định duyệt OT linh hoạt:
+    1. Khớp chính xác key chuẩn `date|canonical_name|shift_name|checkin`.
+    2. Khớp biến thể tên ca (`Sáng` <-> `Ca Sáng`, `Tối` <-> `Ca Tối`).
+    3. Khớp cùng `(normalized_date, canonical_name, normalized_session)` kể cả khi giờ checkin lệch nhẹ vài phút giữa Sheet và Log.
+    """
+    if not shift_approvals or not isinstance(shift_approvals, dict):
+        return {}
+
+    exact_key = f"{date_str}|{canonical_name}|{shift_name}|{checkin_str}"
+    if exact_key in shift_approvals and isinstance(shift_approvals[exact_key], dict):
+        return shift_approvals[exact_key]
+
+    s_clean = str(shift_name or "").strip()
+    alt_shift = s_clean.replace("Ca ", "") if s_clean.startswith("Ca ") else f"Ca {s_clean}"
+    alt_key = f"{date_str}|{canonical_name}|{alt_shift}|{checkin_str}"
+    if alt_key in shift_approvals and isinstance(shift_approvals[alt_key], dict):
+        return shift_approvals[alt_key]
+
+    norm_d = normalize_date_key(date_str)
+    target_canon = get_canonical_name(canonical_name, staff_accounts)
+    s_low = normalize_str(s_clean)
+    norm_sess = "sang" if "sang" in s_low else ("toi" if ("toi" in s_low or "chieu" in s_low) else s_low)
+
+    for k, val in shift_approvals.items():
+        if not isinstance(val, dict):
+            continue
+        parts = str(k).split("|")
+        if len(parts) < 3:
+            continue
+        k_date, k_name, k_shift = parts[0], parts[1], parts[2]
+        if normalize_date_key(k_date) != norm_d:
+            continue
+        if get_canonical_name(k_name, staff_accounts) != target_canon:
+            continue
+        ks_low = normalize_str(k_shift)
+        ks_sess = "sang" if "sang" in ks_low else ("toi" if ("toi" in ks_low or "chieu" in ks_low) else ks_low)
+        if ks_sess == norm_sess:
+            return val
+
+    return {}
+
+
 def is_holiday_date(date_str: str) -> bool:
     """
     Xác định ngày lễ được nhân đôi lương (x2.0).
@@ -460,7 +527,8 @@ def calculate_staff_payslip_breakdown(
     for uname, acc in staff_accounts.items():
         acc_fn = acc.get("full_name") or ""
         aliases = acc.get("aliases") or []
-        alias_canonicals = [get_canonical_name(al, staff_accounts) for al in aliases]
+        sheet_names = acc.get("sheet_names") or []
+        alias_canonicals = [get_canonical_name(al, staff_accounts) for al in (list(aliases) + list(sheet_names)) if al]
         if (get_canonical_name(uname, staff_accounts) == target_canonical or
             get_canonical_name(acc_fn, staff_accounts) == target_canonical or
             target_canonical in alias_canonicals):
@@ -577,31 +645,29 @@ def calculate_staff_payslip_breakdown(
             raw_mins = parse_shift_duration_minutes(checkin, checkout)
 
         is_historic = (month and str(month).isdigit() and int(month) < 9)
-        shift_approval_key = f"{date_str}|{emp_canonical}|{shift_name}|{checkin}"
-        approval = shift_approvals.get(shift_approval_key) or {}
+        approval = _lookup_shift_approval(shift_approvals, date_str, emp_canonical, shift_name, checkin, staff_accounts)
 
         std_shift_mins = get_shift_standard_mins(shift_name, checkin, date_str=date_str)
 
-        if raw_mins <= std_shift_mins:
+        appr_status = approval.get("status")
+        if appr_status == "APPROVE":
+            effective_mins = float(approval.get("approved_mins") or raw_mins)
+            ot_status = "APPROVED"
+        elif appr_status == "CUT":
+            effective_mins = float(approval.get("approved_mins") or std_shift_mins)
+            ot_status = "CUT"
+        elif raw_mins <= std_shift_mins:
             effective_mins = raw_mins
             ot_status = "STANDARD"
         elif raw_mins <= (std_shift_mins + POLICY_OT_BUFFER_MINS):
             effective_mins = raw_mins
             ot_status = "OT_PERF"
+        elif is_historic:
+            effective_mins = raw_mins
+            ot_status = "APPROVED"
         else:
-            appr_status = approval.get("status")
-            if appr_status == "APPROVE":
-                effective_mins = approval.get("approved_mins", raw_mins)
-                ot_status = "APPROVED"
-            elif appr_status == "CUT":
-                effective_mins = approval.get("approved_mins", std_shift_mins)
-                ot_status = "CUT"
-            elif is_historic:
-                effective_mins = raw_mins
-                ot_status = "APPROVED"
-            else:
-                effective_mins = std_shift_mins
-                ot_status = "PENDING"
+            effective_mins = std_shift_mins
+            ot_status = "PENDING"
 
         ot_mins = max(0, effective_mins - std_shift_mins)
         std_mins = effective_mins - ot_mins
@@ -723,7 +789,7 @@ def calculate_staff_payslip_breakdown(
             continue
 
         # Multi-Tier Identity Matching for SQLite attendance_logs
-        log_emp_name = str(log.get("display_name") or log.get("full_name") or "").strip()
+        log_emp_name = str(log.get("display_name") or log.get("full_name") or log.get("staff_name") or "").strip()
         log_username = str(log.get("username") or "").strip()
 
         is_match = False
@@ -789,8 +855,7 @@ def calculate_staff_payslip_breakdown(
 
         raw_mins = float(tot_mins)
         is_historic = (month and str(month).isdigit() and int(month) < 9)
-        shift_approval_key = f"{log_date}|{target_canonical}|{s_name}|{cin}"
-        approval = shift_approvals.get(shift_approval_key) or {}
+        approval = _lookup_shift_approval(shift_approvals, log_date, target_canonical, s_name, cin, staff_accounts)
 
         std_shift_mins = get_shift_standard_mins(s_name, cin)
 
@@ -824,31 +889,33 @@ def calculate_staff_payslip_breakdown(
                 ot_status = "QUEN_CHECKOUT"
             cout = "--:--"
         else:
-            eff_val = log.get("effective_duration_mins")
-            if eff_val is not None and float(eff_val) > 0 and not is_historic:
-                raw_mins = float(eff_val)
-            else:
+            appr_status = approval.get("status")
+            if appr_status == "APPROVE":
+                raw_mins = float(tot_mins) if float(tot_mins) > 0 else float(approval.get("approved_mins") or std_shift_mins)
+                effective_mins = float(approval.get("approved_mins") or raw_mins)
+                ot_status = "APPROVED"
+            elif appr_status == "CUT":
                 raw_mins = float(tot_mins) if float(tot_mins) > 0 else float(std_shift_mins)
-
-            # Khóa an toàn trần thời gian (Capped duration safeguard):
-            # Không một ca đơn lẻ nào được vượt quá 720 phút (12 tiếng) nếu chưa có Admin duyệt
-            if raw_mins > 720 and not is_historic:
-                raw_mins = float(std_shift_mins)
-
-            if raw_mins <= std_shift_mins:
-                effective_mins = raw_mins
-                ot_status = "STANDARD"
-            elif raw_mins <= (std_shift_mins + POLICY_OT_BUFFER_MINS):
-                effective_mins = raw_mins
-                ot_status = "OT_PERF"
+                effective_mins = float(approval.get("approved_mins") or std_shift_mins)
+                ot_status = "CUT"
             else:
-                appr_status = approval.get("status")
-                if appr_status == "APPROVE":
-                    effective_mins = approval.get("approved_mins", raw_mins)
-                    ot_status = "APPROVED"
-                elif appr_status == "CUT":
-                    effective_mins = approval.get("approved_mins", std_shift_mins)
-                    ot_status = "CUT"
+                eff_val = log.get("effective_duration_mins")
+                if eff_val is not None and float(eff_val) > 0 and not is_historic:
+                    raw_mins = float(eff_val)
+                else:
+                    raw_mins = float(tot_mins) if float(tot_mins) > 0 else float(std_shift_mins)
+
+                # Khóa an toàn trần thời gian (Capped duration safeguard):
+                # Không một ca đơn lẻ nào được vượt quá 720 phút (12 tiếng) nếu chưa có Admin duyệt
+                if raw_mins > 720 and not is_historic:
+                    raw_mins = float(std_shift_mins)
+
+                if raw_mins <= std_shift_mins:
+                    effective_mins = raw_mins
+                    ot_status = "STANDARD"
+                elif raw_mins <= (std_shift_mins + POLICY_OT_BUFFER_MINS):
+                    effective_mins = raw_mins
+                    ot_status = "OT_PERF"
                 elif is_historic:
                     effective_mins = raw_mins
                     ot_status = "APPROVED"
@@ -1089,10 +1156,14 @@ def calculate_staff_payslip_breakdown(
 
         entry_id = str(sc.get("id") or sc.get("entry_id") or "")
         sc_reason = normalize_str(sc.get("ly_do") or sc.get("ghi_chu") or sc.get("reason") or "")
+        content_fp = f"{target_canonical}_{sc_month}_{abs(amt)}_{sc_cat}_{sc_reason}"
+        if sc_reason and (content_fp in seen_sp_fingerprints or content_fp in seen_eval_fingerprints):
+            continue
+
         if entry_id:
             fp_sc = f"{target_canonical}_{sc_month}_{entry_id}"
         else:
-            fp_sc = f"{target_canonical}_{sc_month}_{abs(amt)}_{sc_cat}_{sc_reason}"
+            fp_sc = content_fp
 
         if fp_sc in seen_sp_fingerprints or fp_sc in seen_eval_fingerprints:
             continue
@@ -1275,29 +1346,28 @@ def compute_all_shift_records_server_side(
                 late_mins = 0.0
 
         shift_key = f"{date_str}|{canon_name}|{shift_name}|{time_in}"
-        approval = shift_approvals.get(shift_key)
+        approval = _lookup_shift_approval(shift_approvals, date_str, canon_name, shift_name, time_in, staff_accounts)
         is_historic = bool(month_str.isdigit() and int(month_str) < 9)
         std_shift_mins = get_shift_standard_mins(shift_name, time_in, date_str=date_str)
 
-        if raw_mins <= std_shift_mins:
+        if approval and approval.get("status") == "APPROVE":
+            ot_status = "APPROVED"
+            effective_mins = float(approval.get("approved_mins") or raw_mins)
+        elif approval and approval.get("status") == "CUT":
+            ot_status = "CUT"
+            effective_mins = float(approval.get("approved_mins") or std_shift_mins)
+        elif raw_mins <= std_shift_mins:
             ot_status = "STANDARD"
             effective_mins = raw_mins
         elif raw_mins <= (std_shift_mins + POLICY_OT_BUFFER_MINS):
             ot_status = "OT_PERF"
             effective_mins = raw_mins
+        elif is_historic:
+            ot_status = "APPROVED"
+            effective_mins = raw_mins
         else:
-            if approval and approval.get("status") == "APPROVE":
-                ot_status = "APPROVED"
-                effective_mins = float(approval.get("approved_mins") or raw_mins)
-            elif approval and approval.get("status") == "CUT":
-                ot_status = "CUT"
-                effective_mins = float(approval.get("approved_mins") or std_shift_mins)
-            elif is_historic:
-                ot_status = "APPROVED"
-                effective_mins = raw_mins
-            else:
-                ot_status = "PENDING"
-                effective_mins = float(std_shift_mins)
+            ot_status = "PENDING"
+            effective_mins = float(std_shift_mins)
 
         ot_mins = max(0.0, effective_mins - std_shift_mins)
         std_mins = effective_mins - ot_mins

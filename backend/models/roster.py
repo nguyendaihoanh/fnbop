@@ -26,8 +26,17 @@ class UpdateShiftSlotRequest(BaseModel):
     week_id: str = Field(..., min_length=1)
     date: str = Field(..., min_length=1)
     shift_period: str = Field(..., min_length=1)  # morning | evening
-    slot_type: str = Field(..., min_length=1)     # manager | barista | service_1 | service_2 | service_17 | service_18
+    slot_type: str = Field(..., min_length=1)     # manager | barista | service_1 | service_2 | service_17 | service_18 | reinforcement
     username: Optional[str] = None
+
+
+class ReinforcementRequest(BaseModel):
+    week_id: str = Field(..., min_length=1)
+    date: str = Field(..., min_length=1)
+    shift_period: str = Field(..., min_length=1)  # morning | evening
+    username: str = Field(..., min_length=1)
+    role: Optional[str] = "service"
+    index: Optional[int] = None                   # Optional index for removal or update
 
 
 class PublishWeekRequest(BaseModel):
