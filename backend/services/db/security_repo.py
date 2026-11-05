@@ -13,7 +13,7 @@ import datetime
 import logging
 from typing import Optional, Dict, Any, List, Tuple
 
-from services.db.connection import get_db_connection, DEFAULT_TENANT_ID
+from services.db.connection import get_db_connection, write_transaction, DEFAULT_TENANT_ID
 from services.db.schema import _ensure_login_attempts_table, _ensure_security_tables
 
 logger = logging.getLogger("db_service")
@@ -371,38 +371,33 @@ def check_api_rate_limit(
         return True, 0, 0.0
     clean_key = str(key).strip()
     now = time.time()
-    conn = get_db_connection(db_path)
-    _ensure_security_tables(conn)
+    with write_transaction(db_path) as cur:
+        _ensure_security_tables(cur.connection)
+        cur.execute("SELECT count, reset_at FROM api_rate_limits WHERE key = ?", (clean_key,))
+        row = cur.fetchone()
 
-    try:
-        with conn:
-            cur = conn.execute("SELECT count, reset_at FROM api_rate_limits WHERE key = ?", (clean_key,))
-            row = cur.fetchone()
+        if not row or now >= row["reset_at"]:
+            reset_at = now + window_seconds
+            cur.execute(
+                "INSERT INTO api_rate_limits (key, count, reset_at, updated_at) VALUES (?, 1, ?, CURRENT_TIMESTAMP) "
+                "ON CONFLICT(key) DO UPDATE SET count = 1, reset_at = excluded.reset_at, updated_at = CURRENT_TIMESTAMP",
+                (clean_key, reset_at)
+            )
+            return True, 1, 0.0
 
-            if not row or now >= row["reset_at"]:
-                reset_at = now + window_seconds
-                conn.execute(
-                    "INSERT INTO api_rate_limits (key, count, reset_at, updated_at) VALUES (?, 1, ?, CURRENT_TIMESTAMP) "
-                    "ON CONFLICT(key) DO UPDATE SET count = 1, reset_at = excluded.reset_at, updated_at = CURRENT_TIMESTAMP",
-                    (clean_key, reset_at)
-                )
-                return True, 1, 0.0
+        current_count = row["count"]
+        reset_at = row["reset_at"]
 
-            current_count = row["count"]
-            reset_at = row["reset_at"]
-
-            if current_count < limit:
-                new_count = current_count + 1
-                conn.execute(
-                    "UPDATE api_rate_limits SET count = ?, updated_at = CURRENT_TIMESTAMP WHERE key = ?",
-                    (new_count, clean_key)
-                )
-                return True, new_count, 0.0
-            else:
-                retry_after = max(1.0, reset_at - now)
-                return False, current_count, retry_after
-    finally:
-        conn.close()
+        if current_count < limit:
+            new_count = current_count + 1
+            cur.execute(
+                "UPDATE api_rate_limits SET count = ?, updated_at = CURRENT_TIMESTAMP WHERE key = ?",
+                (new_count, clean_key)
+            )
+            return True, new_count, 0.0
+        else:
+            retry_after = max(1.0, reset_at - now)
+            return False, current_count, retry_after
 
 
 def clear_all_rate_limits(db_path: Optional[str] = None) -> None:

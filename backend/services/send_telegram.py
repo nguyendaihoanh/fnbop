@@ -5,6 +5,7 @@ import os
 import sys
 import requests
 from typing import Optional, Tuple
+from concurrent.futures import ThreadPoolExecutor
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -97,6 +98,24 @@ def send_telegram_alert(message: str, chat_id: str = None, token: str = None, ch
     except Exception as e:
         print(f"Lỗi khi gửi Telegram: {e}")
         return False
+
+
+_TELEGRAM_EXECUTOR = ThreadPoolExecutor(max_workers=2, thread_name_prefix="tg_alert")
+
+def send_telegram_alert_async(
+    message: str,
+    chat_id: Optional[str] = None,
+    token: Optional[str] = None,
+    channel: str = "prod"
+) -> None:
+    """
+    Fire-and-forget asynchronous Telegram dispatch via a bounded worker pool.
+    Isolates external WAN latency from local HTTP request critical paths.
+    """
+    try:
+        _TELEGRAM_EXECUTOR.submit(send_telegram_alert, message, chat_id, token, channel)
+    except Exception as e:
+        print(f"[Telegram Async Queue Warning]: {e}")
 
 
 def test_telegram_connection(bot_token: Optional[str] = None, chat_id: Optional[str] = None) -> Tuple[bool, str]:

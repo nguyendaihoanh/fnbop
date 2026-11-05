@@ -9,6 +9,7 @@ Authoritative On-Premise dispatch without reliance on external services.
 
 import os
 import re
+import asyncio
 import datetime
 import unicodedata
 from typing import Optional, Dict, Any, List
@@ -176,14 +177,16 @@ async def api_send_payslip_email(payload: SendPayslipEmailRequest, request: Requ
 
     month = str(payload.month or datetime.datetime.now().month).strip()
 
-    # 1. Resolve or compute breakdown
-    if payload.breakdown and isinstance(payload.breakdown, dict) and "net_pay" in payload.breakdown:
-        breakdown = payload.breakdown
-    else:
-        breakdown = _compute_server_breakdown(staff_name, month)
+    # 1 & 2. Resolve breakdown & Render PDF in worker thread
+    def _prepare_pdf():
+        if payload.breakdown and isinstance(payload.breakdown, dict) and "net_pay" in payload.breakdown:
+            bd = payload.breakdown
+        else:
+            bd = _compute_server_breakdown(staff_name, month)
+        pdf = render_payslip_pdf(staff_name=staff_name, month=month, breakdown=bd)
+        return bd, pdf
 
-    # 2. Render PDF
-    pdf_bytes = render_payslip_pdf(staff_name=staff_name, month=month, breakdown=breakdown)
+    breakdown, pdf_bytes = await asyncio.to_thread(_prepare_pdf)
     clean_name = _clean_slug(staff_name)
     filename = f"PhieuLuong_{clean_name.upper()}_T{month}.pdf"
 
@@ -266,7 +269,7 @@ async def api_send_eval_email(payload: SendEvalEmailRequest, request: Request):
         }
 
     staff_name = eval_data.get("staff_name") or eval_data.get("staffName") or payload.staff_name or "Nhân sự F&B"
-    pdf_bytes = render_eval_notice_pdf(eval_data)
+    pdf_bytes = await asyncio.to_thread(render_eval_notice_pdf, eval_data)
     clean_name = _clean_slug(staff_name)
     eval_id_clean = _clean_slug(str(eval_data.get("id") or "notice"))
     filename = f"BienBan_DanhGia_{eval_id_clean.upper()}_{clean_name.upper()}.pdf"

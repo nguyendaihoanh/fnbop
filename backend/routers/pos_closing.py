@@ -212,6 +212,12 @@ def create_daily_closing(payload: DailyClosingPayload, request: Request = None) 
 
         # 3. Persist to SQLite (wfm.db)
         persisted = insert_daily_closing(record_data)
+        if persisted.get("duplicate_prevented"):
+            return {
+                "status": "success",
+                "message": "Bản ghi chốt ca này đã được lưu trước đó (chống gửi trùng).",
+                "data": persisted
+            }
 
         # 4. Backup to JSON file
         backup_to_json(persisted)

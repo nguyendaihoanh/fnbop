@@ -46,7 +46,7 @@ try:
         get_primary_role,
         check_and_auto_publish_roster_deadline,
     )
-    from backend.services.send_telegram import send_telegram_alert
+    from backend.services.send_telegram import send_telegram_alert, send_telegram_alert_async
     from backend.services.store_config import get_store_config, get_shift_role_requirements
 except ImportError:
     from services.storage import safe_json_write
@@ -72,7 +72,7 @@ except ImportError:
         get_primary_role,
         check_and_auto_publish_roster_deadline,
     )
-    from services.send_telegram import send_telegram_alert
+    from services.send_telegram import send_telegram_alert, send_telegram_alert_async
     from services.store_config import get_store_config, get_shift_role_requirements
 try:
     from backend.services.db import (
@@ -956,7 +956,7 @@ def publish_week_schedule(request: Request, data: PublishWeekRequest):
         f"Người duyệt: {user.get('sub').upper()}\n\n"
         f"Các bạn nhân viên truy cập hệ thống để xem lịch ca và đồng đội làm chung."
     )
-    send_telegram_alert(msg)
+    send_telegram_alert_async(msg)
 
     return {
         "success": True,
@@ -1129,7 +1129,7 @@ def peer_swap_shift(request: Request, data: PeerSwapRequest):
         except Exception:
             s_name = "FnBOps"
 
-        send_telegram_alert(
+        send_telegram_alert_async(
             f"[QUẢN LÝ ĐIỀU CHUYỂN CA] {s_name}\n"
             f"Ngày: {data.date} ({period.upper()} - {slot})\n"
             f"Từ: {caller_name} (@{caller}) -> Đến: {target_name} (@{target_user})\n"
@@ -1168,7 +1168,7 @@ def peer_swap_shift(request: Request, data: PeerSwapRequest):
     except Exception:
         s_name = "FnBOps"
 
-    send_telegram_alert(
+    send_telegram_alert_async(
         f"[YÊU CẦU ĐỔI CA MỚI] {s_name}\n"
         f"Ngày: {data.date} ({period.upper()} - {slot})\n"
         f"Từ bạn: {caller_name} (@{caller})\n"
@@ -1246,7 +1246,7 @@ def respond_peer_swap(request: Request, data: PeerSwapRespondRequest):
         except Exception:
             s_name = "FnBOps"
 
-        send_telegram_alert(
+        send_telegram_alert_async(
             f"[TỪ CHỐI ĐỔI CA] {s_name}\n"
             f"Ngày: {target_swap.get('date')} ({target_swap.get('shift_period').upper()} - {target_swap.get('slot_type')})\n"
             f"Bạn {to_name} (@{to_user}) đã TỪ CHỐI nhận ca từ {from_name} (@{from_user}).\n"
@@ -1384,7 +1384,7 @@ def respond_peer_swap(request: Request, data: PeerSwapRespondRequest):
     except Exception:
         s_name = "FnBOps"
 
-    send_telegram_alert(
+    send_telegram_alert_async(
         f"[ĐỔI CA THÀNH CÔNG] {s_name}\n"
         f"Ngày: {target_swap.get('date')} ({period.upper()} - {slot})\n"
         f"Từ: {from_name} (@{from_user}) -> Đến: {to_name} (@{to_user})\n"

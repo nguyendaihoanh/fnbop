@@ -12,7 +12,8 @@ import sqlite3
 import logging
 import threading
 import datetime
-from typing import Optional, List, Dict, Any
+from contextlib import contextmanager
+from typing import Optional, List, Dict, Any, Iterator
 
 logger = logging.getLogger("db_service")
 
@@ -44,7 +45,7 @@ def get_db_path() -> str:
     return path
 
 
-def get_db_connection(db_path: Optional[str] = None) -> sqlite3.Connection:
+def get_db_connection(db_path: Optional[str] = None, immediate: bool = False) -> sqlite3.Connection:
     """
     Creates and configures a high-performance SQLite connection with:
     - WAL Mode (Write-Ahead Logging) for concurrent reads/writes
@@ -60,7 +61,7 @@ def get_db_connection(db_path: Optional[str] = None) -> sqlite3.Connection:
         path = os.path.join(_BASE_DIR, "data", "fnbop.db")
         os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
 
-    conn = sqlite3.connect(path, timeout=30.0)
+    conn = sqlite3.connect(path, timeout=30.0, isolation_level=None if immediate else "")
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode = WAL;")
     conn.execute("PRAGMA synchronous = NORMAL;")
@@ -70,6 +71,32 @@ def get_db_connection(db_path: Optional[str] = None) -> sqlite3.Connection:
     conn.execute("PRAGMA temp_store = MEMORY;")
     conn.execute("PRAGMA cache_size = -64000;")
     return conn
+
+
+@contextmanager
+def write_transaction(db_path: Optional[str] = None) -> Iterator[sqlite3.Cursor]:
+    """
+    Context manager for atomic write transactions:
+    - Opens connection with isolation_level=None (autocommit mode in Python sqlite3 driver)
+    - Acquires immediate RESERVED lock via BEGIN IMMEDIATE to prevent SQLITE_BUSY_SNAPSHOT deadlocks
+    - Automatically COMMITs on success, ROLLBACKs on failure, and ALWAYS closes the connection
+    """
+    conn = get_db_connection(db_path, immediate=True)
+    cur = conn.cursor()
+    cur.execute("BEGIN IMMEDIATE;")
+    try:
+        yield cur
+        if conn.in_transaction:
+            conn.execute("COMMIT;")
+    except Exception:
+        try:
+            if conn.in_transaction:
+                conn.execute("ROLLBACK;")
+        except Exception:
+            pass
+        raise
+    finally:
+        conn.close()
 
 
 def checkpoint_db(db_path: Optional[str] = None, mode: str = "PASSIVE") -> bool:
@@ -141,7 +168,9 @@ def safe_sqlite_backup(
         os.makedirs(backup_dir, exist_ok=True)
 
     with sqlite3.connect(src_path, timeout=30.0) as src_conn:
+        src_conn.execute("PRAGMA busy_timeout = 30000;")
         with sqlite3.connect(backup_db_path, timeout=30.0) as dst_conn:
+            dst_conn.execute("PRAGMA busy_timeout = 30000;")
             src_conn.backup(dst_conn, pages=100, sleep=0.01)
 
     logger.info(f"SQLite WAL safe backup successfully created at: {backup_db_path}")

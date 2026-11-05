@@ -14,7 +14,7 @@ import datetime
 import unicodedata
 from typing import Optional, Dict, Any, List, Union
 
-from services.db.connection import get_db_connection, DEFAULT_TENANT_ID, _BASE_DIR
+from services.db.connection import get_db_connection, write_transaction, DEFAULT_TENANT_ID, _BASE_DIR
 from services.db.schema import (
     init_db,
     _ensure_staff_accounts_table,
@@ -168,42 +168,41 @@ def upsert_staff_account(
 
 
 def get_staff_token_version(username: str, tenant_id: str = DEFAULT_TENANT_ID, db_path: Optional[str] = None) -> int:
-    """Reads current staff token_version from SQLite staff_accounts."""
+    """Reads current staff token_version from SQLite staff_accounts with Pure Read and strict finally cleanup."""
+    if not username:
+        return 1
+    clean_u = str(username).strip().lower()
+    conn = get_db_connection(db_path)
     try:
-        conn = get_db_connection(db_path)
-        _ensure_staff_accounts_table(conn)
         cur = conn.cursor()
         cur.execute(
             "SELECT token_version FROM staff_accounts WHERE username = ? AND tenant_id = ?",
-            (str(username).strip().lower(), tenant_id)
+            (clean_u, tenant_id)
         )
         row = cur.fetchone()
-        conn.close()
         if row and row["token_version"] is not None:
             return int(row["token_version"])
     except Exception:
         pass
+    finally:
+        conn.close()
     return 1
 
 
 def bump_staff_token_version_db(username: str, tenant_id: str = DEFAULT_TENANT_ID, db_path: Optional[str] = None) -> int:
-    """Increments staff token_version atomically in SQLite."""
+    """Increments staff token_version atomically in SQLite using write_transaction."""
     clean_u = str(username).strip().lower()
     try:
-        conn = get_db_connection(db_path)
-        _ensure_staff_accounts_table(conn)
-        with conn:
-            conn.execute("""
+        with write_transaction(db_path) as cur:
+            cur.execute("""
                 UPDATE staff_accounts 
                 SET token_version = COALESCE(token_version, 1) + 1 
                 WHERE username = ? AND tenant_id = ?
             """, (clean_u, tenant_id))
-        cur = conn.cursor()
-        cur.execute("SELECT token_version FROM staff_accounts WHERE username = ? AND tenant_id = ?", (clean_u, tenant_id))
-        row = cur.fetchone()
-        conn.close()
-        if row and row["token_version"] is not None:
-            return int(row["token_version"])
+            cur.execute("SELECT token_version FROM staff_accounts WHERE username = ? AND tenant_id = ?", (clean_u, tenant_id))
+            row = cur.fetchone()
+            if row and row["token_version"] is not None:
+                return int(row["token_version"])
     except Exception:
         pass
     return 1
@@ -445,9 +444,8 @@ def load_staff_auth_from_sqlite(tenant_id: str = DEFAULT_TENANT_ID, db_path: Opt
     Primary Source of Truth: Loads staff accounts, aliases, confirmations,
     and payroll locks directly from SQLite database.
     """
+    conn = get_db_connection(db_path)
     try:
-        conn = get_db_connection(db_path)
-        _ensure_staff_accounts_table(conn)
         cur = conn.cursor()
 
         # 1. Load accounts
@@ -484,7 +482,6 @@ def load_staff_auth_from_sqlite(tenant_id: str = DEFAULT_TENANT_ID, db_path: Opt
             }
 
         if not accounts_map:
-            conn.close()
             return {}
 
         # 2. Load aliases
@@ -525,7 +522,6 @@ def load_staff_auth_from_sqlite(tenant_id: str = DEFAULT_TENANT_ID, db_path: Opt
         except Exception:
             pass
 
-        conn.close()
         return {
             "staff_accounts": accounts_map,
             "payroll_locks": locks_map
@@ -533,4 +529,6 @@ def load_staff_auth_from_sqlite(tenant_id: str = DEFAULT_TENANT_ID, db_path: Opt
     except Exception as e:
         logger.error(f"Error loading staff auth from SQLite: {e}")
         return {}
+    finally:
+        conn.close()
 

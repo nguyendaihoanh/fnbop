@@ -30,6 +30,12 @@ logger = logging.getLogger("db_service")
 _security_tables_lock = threading.Lock()
 _security_tables_ensured_dbs = set()
 
+_staff_tables_lock = threading.Lock()
+_staff_tables_ensured_dbs = set()
+
+_v2_tables_lock = threading.Lock()
+_v2_tables_ensured_dbs = set()
+
 def _ensure_login_attempts_table(conn: sqlite3.Connection) -> None:
     cur = conn.cursor()
     cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='login_attempts'")
@@ -172,7 +178,19 @@ def _ensure_security_tables(conn: sqlite3.Connection) -> None:
             _security_tables_ensured_dbs.add(target_key)
 
 def _ensure_staff_accounts_table(conn: sqlite3.Connection) -> None:
-    _ensure_default_tenants(conn)
+    try:
+        cur = conn.execute("PRAGMA database_list")
+        row = cur.fetchone()
+        actual_path = row[2] if row and len(row) > 2 else ""
+    except Exception:
+        actual_path = ""
+    target_key = actual_path or get_db_path()
+    if target_key and target_key in _staff_tables_ensured_dbs:
+        return
+    with _staff_tables_lock:
+        if target_key and target_key in _staff_tables_ensured_dbs:
+            return
+        _ensure_default_tenants(conn)
     conn.execute("""
     CREATE TABLE IF NOT EXISTS staff_accounts (
         username TEXT PRIMARY KEY,
@@ -252,6 +270,8 @@ def _ensure_staff_accounts_table(conn: sqlite3.Connection) -> None:
             new_eid = f"EMP_{next_idx:03d}"
             used_nums.add(next_idx)
             conn.execute("UPDATE staff_accounts SET employee_id = ? WHERE username = ?", (new_eid, u))
+        if target_key:
+            _staff_tables_ensured_dbs.add(target_key)
 
 def _ensure_payroll_confirmations_table(conn: sqlite3.Connection) -> None:
     conn.execute("""
@@ -302,7 +322,19 @@ def _ensure_payroll_locks_table(conn: sqlite3.Connection) -> None:
     conn.execute("CREATE INDEX IF NOT EXISTS idx_disb_staff ON payroll_disbursements(staff_name);")
 
 def _ensure_v2_operational_tables(conn: sqlite3.Connection) -> None:
-    conn.executescript("""
+    try:
+        cur = conn.execute("PRAGMA database_list")
+        row = cur.fetchone()
+        actual_path = row[2] if row and len(row) > 2 else ""
+    except Exception:
+        actual_path = ""
+    target_key = actual_path or get_db_path()
+    if target_key and target_key in _v2_tables_ensured_dbs:
+        return
+    with _v2_tables_lock:
+        if target_key and target_key in _v2_tables_ensured_dbs:
+            return
+        conn.executescript("""
     CREATE TABLE IF NOT EXISTS shift_approvals (
         shift_key TEXT NOT NULL,
         tenant_id TEXT NOT NULL DEFAULT 'default',
@@ -363,6 +395,8 @@ def _ensure_v2_operational_tables(conn: sqlite3.Connection) -> None:
     CREATE INDEX IF NOT EXISTS idx_att_requests_status ON attendance_requests(tenant_id, status, date);
     CREATE INDEX IF NOT EXISTS idx_att_requests_user ON attendance_requests(username);
     """)
+    if target_key:
+        _v2_tables_ensured_dbs.add(target_key)
 
 def _ensure_so_cai_luong_and_attendance_enhancements(conn: sqlite3.Connection) -> None:
     """
@@ -534,6 +568,7 @@ def _ensure_evaluations_table(conn: sqlite3.Connection) -> None:
             pass
 
 def _ensure_daily_closings_table(conn: sqlite3.Connection) -> None:
+    _ensure_default_tenants(conn)
     conn.execute("""
     CREATE TABLE IF NOT EXISTS daily_closings (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -569,6 +604,21 @@ def _ensure_daily_closings_table(conn: sqlite3.Connection) -> None:
         conn.execute("ALTER TABLE daily_closings ADD COLUMN notes TEXT;")
     if "shift_key" not in cols:
         conn.execute("ALTER TABLE daily_closings ADD COLUMN shift_key TEXT DEFAULT 'daily';")
+
+    try:
+        conn.execute("""
+            DELETE FROM daily_closings
+            WHERE id NOT IN (
+                SELECT MAX(id) FROM daily_closings
+                GROUP BY tenant_id, report_date, COALESCE(NULLIF(shift_key, ''), 'daily'), closing_time
+            );
+        """)
+        conn.execute("""
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_daily_closings_unique_shift 
+            ON daily_closings(tenant_id, report_date, shift_key, closing_time);
+        """)
+    except Exception:
+        pass
 
 def _ensure_store_configs_table(conn: sqlite3.Connection) -> None:
     conn.execute("""
