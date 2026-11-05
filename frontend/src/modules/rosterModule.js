@@ -1821,6 +1821,46 @@ export async function handleUpdateShiftSlotSubmit() {
   }
 }
 
+export async function handleRemoveReinforcement(weekId, isoDate, shiftPeriod, username, fullName) {
+  const ok = await showConfirmDialog({
+    title: 'Gỡ Nhân Sự Tăng Cường',
+    message: `Xác nhận gỡ nhân sự "${fullName}" khỏi vị trí tăng cường ca ${shiftPeriod === 'morning' ? 'Sáng' : 'Tối'} ngày ${isoDate}?`,
+    confirmText: 'Gỡ Khỏi Ca',
+    cancelText: 'Hủy',
+    type: 'warning',
+    icon: 'solar:trash-bin-trash-bold'
+  });
+  if (!ok) return;
+
+  const token = localStorage.getItem('vnaigc_jwt');
+  try {
+    const res = await fetch('/api/v1/cc/roster/remove-reinforcement', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        week_id: weekId,
+        date: isoDate,
+        shift_period: shiftPeriod,
+        username: username
+      })
+    });
+    if (res.ok) {
+      showToast(`Đã gỡ ${fullName} khỏi ca tăng cường`, 'success');
+      state.currentRosterWeeksCache = {};
+      await fetchRosterWeekData('current');
+      renderTabRoster();
+    } else {
+      const err = await res.json().catch(() => ({}));
+      showToast(safeErrorDetail(err, 'Không thể gỡ ca tăng cường'), 'error');
+    }
+  } catch (e) {
+    showToast(safeErrorDetail(e, 'Lỗi kết nối máy chủ!'), 'error');
+  }
+}
+
 if (typeof window !== 'undefined') {
   window.openPeerSwapModal = openPeerSwapModal;
   window.closePeerSwapModal = closePeerSwapModal;
@@ -1830,6 +1870,7 @@ if (typeof window !== 'undefined') {
   window.closeShiftDetailModal = closeShiftDetailModal;
   window.handleRequestSwapShift = handleRequestSwapShift;
   window.getInitialsAvatar = getInitialsAvatar;
+  window.handleRemoveReinforcement = handleRemoveReinforcement;
 }
 
 export function setupRosterNav() {
@@ -2339,10 +2380,17 @@ export function renderTabRoster() {
     curESvc = eList.length - curEBar;
   }
 
+  const mReinfCount = (curDayRoster && curDayRoster.morning && Array.isArray(curDayRoster.morning.reinforcements))
+    ? curDayRoster.morning.reinforcements.length
+    : 0;
+  const eReinfCount = (curDayRoster && curDayRoster.evening && Array.isArray(curDayRoster.evening.reinforcements))
+    ? curDayRoster.evening.reinforcements.length
+    : 0;
+
   const txtMorning = document.getElementById('txtMorningCount');
   const txtEvening = document.getElementById('txtEveningCount');
-  if (txtMorning) txtMorning.textContent = `${curMBar} Barista • ${curMSvc} Phục vụ`;
-  if (txtEvening) txtEvening.textContent = `${curEBar} Barista • ${curESvc} Phục vụ`;
+  if (txtMorning) txtMorning.textContent = `${curMBar} Barista • ${curMSvc} Phục vụ${mReinfCount > 0 ? ` (+${mReinfCount} TC)` : ''}`;
+  if (txtEvening) txtEvening.textContent = `${curEBar} Barista • ${curESvc} Phục vụ${eReinfCount > 0 ? ` (+${eReinfCount} TC)` : ''}`;
 
   let hasEmptySlot = false;
   if (curDayRoster) {
@@ -2409,6 +2457,9 @@ export function renderTabRoster() {
   const staffDirForEdit = (rosterData && rosterData.staff_directory) || {};
   const getStaffNameForEdit = u => (staffDirForEdit[u] && staffDirForEdit[u].full_name) || u;
 
+  const userRoleForRoster = localStorage.getItem('vnaigc_role') || 'STAFF';
+  const isManagerOrAdmin = ['MANAGER', 'ADMIN'].includes(userRoleForRoster.toUpperCase());
+
   if (mBox) {
     mBox.innerHTML = '';
     if (curDayRoster && curDayRoster.morning) {
@@ -2431,6 +2482,45 @@ export function renderTabRoster() {
         });
         mBox.appendChild(chip);
       });
+
+      // Render các slot nhân sự tăng cường ca sáng
+      const mReinfs = m.reinforcements || [];
+      mReinfs.forEach(rf => {
+        const rfUser = typeof rf === 'object' ? rf.username : rf;
+        const rfName = (typeof rf === 'object' && rf.full_name) || getStaffNameForEdit(rfUser);
+        const chip = document.createElement('span');
+        chip.className = 'staff-mini-chip reinforcement-chip';
+        chip.style.cssText = 'display:inline-flex; align-items:center; gap:4px; padding:3px 8px; border-radius:6px; margin:2px; background:rgba(245,158,11,0.12); border:1px solid rgba(245,158,11,0.3);';
+        chip.innerHTML = `
+          <span class="competency-badge reinf" style="background:var(--accent-amber, #f59e0b); color:#000; font-weight:800; font-size:10px; padding:1px 4px; border-radius:3px;">T.CƯỜNG</span>
+          <strong>${escapeHtml(rfName)}</strong>
+          ${isManagerOrAdmin ? `<span class="btn-del-reinf" style="cursor:pointer; opacity:0.6; padding:0 2px; font-weight:bold; margin-left:3px;" title="Gỡ nhân sự tăng cường">✕</span>` : ''}
+        `;
+        if (isManagerOrAdmin) {
+          const btnDel = chip.querySelector('.btn-del-reinf');
+          if (btnDel) {
+            btnDel.addEventListener('click', (e) => {
+              e.stopPropagation();
+              handleRemoveReinforcement(currentWeekIdForEdit, isoSelected, 'morning', rfUser, rfName);
+            });
+          }
+        }
+        mBox.appendChild(chip);
+      });
+
+      // Nút + Tăng cường cho Quản lý / Admin
+      if (isManagerOrAdmin) {
+        const btnAdd = document.createElement('button');
+        btnAdd.type = 'button';
+        btnAdd.className = 'btn-add-reinforcement';
+        btnAdd.style.cssText = 'display:inline-flex; align-items:center; gap:3px; border:1px dashed var(--accent-amber, #f59e0b); background:transparent; color:var(--accent-amber, #f59e0b); font-size:11px; font-weight:700; padding:3px 8px; border-radius:6px; cursor:pointer; margin:2px; vertical-align:middle;';
+        btnAdd.innerHTML = `<iconify-icon icon="solar:user-plus-bold" width="12" height="12"></iconify-icon> <span>+ Tăng cường</span>`;
+        btnAdd.title = 'Bổ sung thêm nhân sự tăng cường / thử việc vào ca sáng';
+        btnAdd.addEventListener('click', () => {
+          openUpdateShiftModal(currentWeekIdForEdit, isoSelected, 'morning', 'reinforcement', null, 'Tăng Cường');
+        });
+        mBox.appendChild(btnAdd);
+      }
     } else {
       if (mList.length === 0) mBox.innerHTML = '<span style="font-size:12px; color:var(--text-muted);">Chưa xếp ca sáng</span>';
       mList.forEach(r => {
@@ -2469,6 +2559,45 @@ export function renderTabRoster() {
         });
         eBox.appendChild(chip);
       });
+
+      // Render các slot nhân sự tăng cường ca tối
+      const eReinfs = ev.reinforcements || [];
+      eReinfs.forEach(rf => {
+        const rfUser = typeof rf === 'object' ? rf.username : rf;
+        const rfName = (typeof rf === 'object' && rf.full_name) || getStaffNameForEdit(rfUser);
+        const chip = document.createElement('span');
+        chip.className = 'staff-mini-chip reinforcement-chip';
+        chip.style.cssText = 'display:inline-flex; align-items:center; gap:4px; padding:3px 8px; border-radius:6px; margin:2px; background:rgba(245,158,11,0.12); border:1px solid rgba(245,158,11,0.3);';
+        chip.innerHTML = `
+          <span class="competency-badge reinf" style="background:var(--accent-amber, #f59e0b); color:#000; font-weight:800; font-size:10px; padding:1px 4px; border-radius:3px;">T.CƯỜNG</span>
+          <strong>${escapeHtml(rfName)}</strong>
+          ${isManagerOrAdmin ? `<span class="btn-del-reinf" style="cursor:pointer; opacity:0.6; padding:0 2px; font-weight:bold; margin-left:3px;" title="Gỡ nhân sự tăng cường">✕</span>` : ''}
+        `;
+        if (isManagerOrAdmin) {
+          const btnDel = chip.querySelector('.btn-del-reinf');
+          if (btnDel) {
+            btnDel.addEventListener('click', (e) => {
+              e.stopPropagation();
+              handleRemoveReinforcement(currentWeekIdForEdit, isoSelected, 'evening', rfUser, rfName);
+            });
+          }
+        }
+        eBox.appendChild(chip);
+      });
+
+      // Nút + Tăng cường cho Quản lý / Admin
+      if (isManagerOrAdmin) {
+        const btnAdd = document.createElement('button');
+        btnAdd.type = 'button';
+        btnAdd.className = 'btn-add-reinforcement';
+        btnAdd.style.cssText = 'display:inline-flex; align-items:center; gap:3px; border:1px dashed var(--accent-amber, #f59e0b); background:transparent; color:var(--accent-amber, #f59e0b); font-size:11px; font-weight:700; padding:3px 8px; border-radius:6px; cursor:pointer; margin:2px; vertical-align:middle;';
+        btnAdd.innerHTML = `<iconify-icon icon="solar:user-plus-bold" width="12" height="12"></iconify-icon> <span>+ Tăng cường</span>`;
+        btnAdd.title = 'Bổ sung thêm nhân sự tăng cường / thử việc vào ca tối';
+        btnAdd.addEventListener('click', () => {
+          openUpdateShiftModal(currentWeekIdForEdit, isoSelected, 'evening', 'reinforcement', null, 'Tăng Cường');
+        });
+        eBox.appendChild(btnAdd);
+      }
     } else {
       if (eList.length === 0) eBox.innerHTML = '<span style="font-size:12px; color:var(--text-muted);">Chưa xếp ca chiều/tối</span>';
       eList.forEach(r => {

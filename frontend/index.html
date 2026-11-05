@@ -712,8 +712,28 @@
       color: var(--text-sub) !important;
     }
     .role-pill.active {
-      background: var(--c-blue) !important;
+      background: var(--accent-coral, #c84b31) !important;
       color: #ffffff !important;
+      border-color: var(--accent-coral, #c84b31) !important;
+    }
+    .payroll-gross-breakdown {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px 14px;
+      padding-top: 8px;
+      border-top: 1px dashed var(--border);
+      font-size: clamp(11px, 3vw, 12px);
+      color: var(--text-secondary);
+      align-items: center;
+      justify-content: space-between;
+    }
+    .payroll-gross-breakdown > span {
+      white-space: nowrap;
+    }
+    .disb-kpi-val {
+      font-size: clamp(13.5px, 3.8vw, 15.5px) !important;
+      white-space: nowrap !important;
+      letter-spacing: -0.02em !important;
     }
     .disbursement-filter-group {
       display: flex !important;
@@ -1563,13 +1583,13 @@
           <div class="payslip-filter-bar">
             <input type="text" id="payslipSearch" class="search-input" placeholder="Tìm nhân sự...">
             <div class="payslip-action-buttons">
-              <button id="btnSendBulkZaloCards" class="pill-btn" style="background:rgba(48, 209, 88, 0.15); color:var(--accent-emerald); border:1px solid rgba(48, 209, 88, 0.4); font-weight:700; font-size:11.5px; border-radius:8px; padding:8px 6px; white-space:nowrap; cursor:pointer;" title="Gửi ảnh phiếu lương qua Zalo cho tất cả nhân sự có SĐT"><iconify-icon icon="solar:chat-round-dots-bold" width="14" height="14"></iconify-icon> Gửi Zalo</button>
-              <button id="btnOpenToolbarAdvance" class="pill-btn" style="background:var(--accent-coral); color:#fff; font-weight:700; font-size:11.5px; border:none; border-radius:8px; padding:8px 6px; white-space:nowrap; cursor:pointer;" title="Nhập tạm ứng cho nhân sự">Tạm Ứng</button>
-              <button id="btnExportPayrollExcelMobile" class="pill-btn" style="background:#18222F; color:#fff; font-weight:700; font-size:11.5px; border:1px solid #334155; border-radius:8px; padding:8px 6px; white-space:nowrap; cursor:pointer;" title="Xuất bảng lương Excel"><iconify-icon icon="solar:download-minimalistic-bold" width="14" height="14"></iconify-icon> Xuất Excel</button>
+              <button id="btnSendBulkZaloCards" class="pill-btn" style="background:var(--bg-card); color:var(--text-primary); border:1px solid var(--border); font-weight:700; font-size:11.5px; border-radius:8px; padding:8px 6px; white-space:nowrap; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:5px;" title="Gửi ảnh phiếu lương qua Zalo cho tất cả nhân sự có SĐT"><iconify-icon icon="solar:chat-round-dots-bold" width="14" height="14" style="color:var(--accent-emerald);"></iconify-icon> Gửi Zalo</button>
+              <button id="btnOpenToolbarAdvance" class="pill-btn" style="background:var(--accent-coral); color:#fff; font-weight:700; font-size:11.5px; border:1px solid var(--accent-coral); border-radius:8px; padding:8px 6px; white-space:nowrap; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:5px;" title="Nhập tạm ứng cho nhân sự"><iconify-icon icon="solar:hand-money-bold" width="14" height="14"></iconify-icon> Tạm Ứng</button>
+              <button id="btnExportPayrollExcelMobile" class="pill-btn" style="background:var(--bg-card); color:var(--text-primary); border:1px solid var(--border); font-weight:700; font-size:11.5px; border-radius:8px; padding:8px 6px; white-space:nowrap; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:5px;" title="Xuất bảng lương Excel"><iconify-icon icon="solar:download-minimalistic-bold" width="14" height="14" style="color:var(--text-secondary);"></iconify-icon> Xuất Excel</button>
             </div>
           </div>
           <div id="roleFilterGroup" class="role-chip-filter">
-            <span class="role-pill active" data-role="ALL">Tất cả</span>
+            <span class="role-pill active" data-role="ALL">Mọi vị trí</span>
             <span class="role-pill" data-role="Pha chế">Pha chế</span>
             <span class="role-pill" data-role="Phục vụ">Phục vụ</span>
             <span class="role-pill" data-role="Quản lý">Quản lý</span>
@@ -2671,17 +2691,28 @@
 
         <!-- Input Fields -->
         <div style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px;">
-          <div>
-            <label style="font-size: 12px; font-weight: 700; color: var(--text-secondary); display: block; margin-bottom: 4px;">Giờ ra ca thực tế:</label>
-            <input type="time" id="hangingShiftCheckoutInput" class="search-input" style="width: 100%; padding: 10px 12px; font-size: 15px; font-family: var(--font-mono); font-weight: 700; border-radius: 10px;">
-            <p class="text-muted-12" style="margin: 4px 0 0; font-size: 11px;">Mặc định gợi ý theo giờ kết thúc chuẩn của ca.</p>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <div>
+              <label style="font-size: 12px; font-weight: 700; color: var(--text-secondary); display: block; margin-bottom: 4px;">Giờ vào ca thực tế:</label>
+              <input type="time" id="hangingShiftCheckinInput" class="search-input" style="width: 100%; padding: 10px 12px; font-size: 15px; font-family: var(--font-mono); font-weight: 700; border-radius: 10px;">
+            </div>
+            <div>
+              <label style="font-size: 12px; font-weight: 700; color: var(--text-secondary); display: block; margin-bottom: 4px;">Giờ ra ca thực tế:</label>
+              <input type="time" id="hangingShiftCheckoutInput" class="search-input" style="width: 100%; padding: 10px 12px; font-size: 15px; font-family: var(--font-mono); font-weight: 700; border-radius: 10px;">
+            </div>
           </div>
+          <p class="text-muted-12" style="margin: -6px 0 0; font-size: 11px;">Có thể chỉnh chính xác cả giờ vào và giờ ra thực tế.</p>
 
           <div>
             <label style="font-size: 12px; font-weight: 700; color: var(--text-secondary); display: block; margin-bottom: 4px;">Số phút công duyệt tính lương:</label>
             <input type="number" id="hangingShiftMinutesInput" class="search-input" value="300" min="30" max="720" style="width: 100%; padding: 10px 12px; font-size: 14px; font-family: var(--font-mono); font-weight: 700; border-radius: 10px;">
-            <p class="text-muted-12" style="margin: 4px 0 0; font-size: 11px;">Chuẩn ca: Ca Sáng = 300p (5.0h) | Ca Tối = 300p hoặc 360p.</p>
+            <p class="text-muted-12" style="margin: 4px 0 0; font-size: 11px;">Chuẩn ca: Ca Sáng = 330p (5.5h) | Ca Tối = 300p (18h) hoặc 360p (17h).</p>
           </div>
+
+          <label style="display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 700; color: var(--text-primary); background: var(--bg-card-sub); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; cursor: pointer;">
+            <input type="checkbox" id="hangingShiftClearLate" style="width: 18px; height: 18px; accent-color: var(--accent-emerald);">
+            <span>Miễn phạt đi trễ cho ca này (Đánh dấu Đúng giờ)</span>
+          </label>
 
           <div>
             <label style="font-size: 12px; font-weight: 700; color: var(--text-secondary); display: block; margin-bottom: 4px;">Lý do / Ghi chú kiểm tra:</label>
@@ -2985,8 +3016,86 @@
         </div>
 
         <!-- Footer Actions -->
-        <div style="margin-top:12px; flex-shrink:0;">
-          <button id="btnCloseStaffShiftsBottom" onclick="closeStaffShiftsModal()" class="sheet-btn secondary" style="width:100%; padding:9px; font-size:12px; font-weight:600;">Đóng Danh Sách</button>
+        <div style="margin-top:12px; flex-shrink:0; display:flex; gap:8px;">
+          <button id="btnAdminAddShiftInModal" type="button" onclick="openAdminUpsertShiftModal()" class="sheet-btn admin-only" style="display:none; flex:1; background:var(--accent-emerald); color:#fff; padding:9px; font-size:12px; font-weight:700; border-radius:8px; align-items:center; justify-content:center; gap:5px;">
+            <iconify-icon icon="solar:add-circle-bold" width="15" height="15"></iconify-icon>
+            <span>Thêm Ca Quên Chấm</span>
+          </button>
+          <button id="btnCloseStaffShiftsBottom" onclick="closeStaffShiftsModal()" class="sheet-btn secondary" style="flex:1; padding:9px; font-size:12px; font-weight:600;">Đóng Danh Sách</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- BOTTOM SHEET: ADMIN CHỈNH GIỜ CHÍNH XÁC / THÊM BỔ SUNG CA -->
+    <div id="adminUpsertShiftSheet" class="sheet-overlay">
+      <div class="sheet-modal" style="overflow-y:auto; max-width:460px; margin:auto;">
+        <div class="sheet-grabber"></div>
+        <div class="flex-between mb-12" style="align-items:center;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <iconify-icon icon="solar:clock-circle-bold" width="22" height="22" style="color:var(--accent-emerald);"></iconify-icon>
+            <div>
+              <h3 id="adminUpsertShiftTitle" style="font-size:16px; font-weight:800; margin:0; color:var(--text-primary);">Chỉnh Giờ / Bổ Sung Ca</h3>
+              <p id="adminUpsertShiftSub" class="text-muted-12" style="margin:2px 0 0;">Chỉnh chính xác giờ Vào - Ra và phút công thực tế</p>
+            </div>
+          </div>
+          <button type="button" onclick="closeAdminUpsertShiftModal()" class="modal-close-btn" title="Đóng">
+            <iconify-icon icon="solar:close-circle-linear" width="20" height="20"></iconify-icon>
+          </button>
+        </div>
+
+        <input type="hidden" id="upsertShiftRecordId" value="">
+        <input type="hidden" id="upsertShiftStaffName" value="">
+
+        <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:14px;">
+          <div style="display:grid; grid-template-columns: 1.1fr 0.9fr; gap:10px;">
+            <div>
+              <label style="font-size:12px; font-weight:700; color:var(--text-secondary); display:block; margin-bottom:4px;">Ngày làm việc (DD/MM/YYYY):</label>
+              <input type="text" id="upsertShiftDateInput" class="search-input" placeholder="05/11/2026" style="width:100%; padding:9px 10px; font-size:14px; font-family:var(--font-mono); font-weight:700; border-radius:8px;">
+            </div>
+            <div>
+              <label style="font-size:12px; font-weight:700; color:var(--text-secondary); display:block; margin-bottom:4px;">Buổi ca:</label>
+              <select id="upsertShiftKeySelect" class="search-input" style="width:100%; padding:9px 10px; font-size:13px; font-weight:700; border-radius:8px;">
+                <option value="sang">Ca Sáng</option>
+                <option value="toi">Ca Tối</option>
+              </select>
+            </div>
+          </div>
+
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+            <div>
+              <label style="font-size:12px; font-weight:700; color:var(--text-secondary); display:block; margin-bottom:4px;">Giờ Check-in (Vào):</label>
+              <input type="time" id="upsertShiftInInput" class="search-input" value="06:00" style="width:100%; padding:9px 10px; font-size:15px; font-family:var(--font-mono); font-weight:700; border-radius:8px;">
+            </div>
+            <div>
+              <label style="font-size:12px; font-weight:700; color:var(--text-secondary); display:block; margin-bottom:4px;">Giờ Check-out (Ra):</label>
+              <input type="time" id="upsertShiftOutInput" class="search-input" value="11:30" style="width:100%; padding:9px 10px; font-size:15px; font-family:var(--font-mono); font-weight:700; border-radius:8px;">
+            </div>
+          </div>
+
+          <div>
+            <label style="font-size:12px; font-weight:700; color:var(--text-secondary); display:block; margin-bottom:4px;">Số phút công tính lương:</label>
+            <input type="number" id="upsertShiftMinsInput" class="search-input" value="330" min="15" max="720" style="width:100%; padding:9px 10px; font-size:14px; font-family:var(--font-mono); font-weight:700; border-radius:8px;">
+            <p class="text-muted-12" style="margin:3px 0 0; font-size:11px;">Tự động tính theo Giờ Vào ➔ Giờ Ra (có thể nhập tay số phút duyệt).</p>
+          </div>
+
+          <label style="display:flex; align-items:center; gap:8px; font-size:12.5px; font-weight:700; color:var(--text-primary); background:var(--bg-card-sub); border:1px solid var(--border); border-radius:8px; padding:9px 12px; cursor:pointer;">
+            <input type="checkbox" id="upsertShiftClearLate" checked style="width:18px; height:18px; accent-color:var(--accent-emerald);">
+            <span>Miễn phạt đi trễ (Ghi nhận Đúng giờ)</span>
+          </label>
+
+          <div>
+            <label style="font-size:12px; font-weight:700; color:var(--text-secondary); display:block; margin-bottom:4px;">Ghi chú điều chỉnh:</label>
+            <input type="text" id="upsertShiftNoteInput" class="search-input" placeholder="Ví dụ: Admin chỉnh đúng giờ thực tế..." style="width:100%; padding:9px 10px; font-size:13px; border-radius:8px;">
+          </div>
+        </div>
+
+        <div style="display:flex; gap:8px;">
+          <button type="button" id="btnSubmitAdminUpsertShift" onclick="submitAdminUpsertShift()" class="sheet-btn" style="flex:1; background:var(--accent-emerald); color:#fff; font-weight:800; padding:11px; border-radius:10px; font-size:13.5px; cursor:pointer;">
+            Lưu Giờ Công Chính Xác
+          </button>
+          <button type="button" onclick="closeAdminUpsertShiftModal()" class="sheet-btn secondary" style="width:auto; padding:11px 14px; border-radius:10px; font-size:13px;">
+            Hủy
+          </button>
         </div>
       </div>
     </div>

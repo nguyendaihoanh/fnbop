@@ -640,11 +640,13 @@ export function initPressHoldCheckout() {
   state.pressHoldBound = true;
 
   const HOLD_DURATION = 1200; // 1.2s
+  let holdStartAt = 0;
 
   function onHoldStart(e) {
     if (e && e.button && e.button !== 0) return;
     if (isHolding || isCompleted) return;
     isHolding = true;
+    holdStartAt = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
 
     const currentBtn = document.getElementById('btnPressHoldCheckout');
     const bar = document.getElementById('pressHoldProgressBar');
@@ -659,7 +661,7 @@ export function initPressHoldCheckout() {
       textEl.textContent = 'Nhấn giữ để Tan Ca';
     }
 
-    const startTime = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+    const startTime = holdStartAt;
 
     function tick(now) {
       if (!isHolding) return;
@@ -681,8 +683,10 @@ export function initPressHoldCheckout() {
     holdRafId = requestAnim(tick);
   }
 
-  function onHoldEnd() {
+  function onHoldEnd(e) {
     if (!isHolding || isCompleted) return;
+    const nowTime = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+    const heldMs = nowTime - holdStartAt;
     isHolding = false;
     if (holdRafId) {
       cancelAnim(holdRafId);
@@ -700,6 +704,12 @@ export function initPressHoldCheckout() {
     }
     if (textEl) {
       textEl.textContent = 'Nhấn giữ để Tan Ca';
+    }
+
+    // Hỗ trợ nhân sự chạm nhanh (1-Tap < 1.1s trên iPhone/Safari): Mở luôn hộp thoại xác nhận Kết Thúc Ca
+    const isReleaseEvent = !e || e.type === 'pointerup' || e.type === 'touchend' || e.type === 'mouseup';
+    if (isReleaseEvent && heldMs >= 30 && heldMs < HOLD_DURATION) {
+      handleQuickAttendanceAction();
     }
   }
 
@@ -1127,8 +1137,8 @@ export async function loadPendingManagerCheckouts() {
                 <button type="button" onclick="promptManagerRemindStaff('${escapeHtml(r.username)}', 'CHECKOUT')" style="background:rgba(245, 158, 11, 0.15); color:var(--accent-amber); border:1px solid var(--accent-amber); border-radius:6px; padding:4px 8px; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap;">
                   Nhắc Ra
                 </button>
-                <button type="button" onclick="promptManagerCloseShift('${r.id}', '${escapeHtml(r.display_name || r.username)}', '${r.shift_key}')" style="background:var(--accent-emerald); color:#fff; border:none; border-radius:6px; padding:4px 8px; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap;">
-                  Chốt Ra
+                <button type="button" onclick="openReviewHangingShiftModal(${JSON.stringify(r).replace(/"/g, '&quot;')})" style="background:var(--accent-emerald); color:#fff; border:none; border-radius:6px; padding:4px 8px; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap;">
+                  Chốt Ra / Sửa Giờ
                 </button>
               `}
               <button type="button" onclick="promptManagerDeleteShift('${r.id}', '${escapeHtml(r.display_name || r.username)}')" style="background:rgba(239, 68, 68, 0.15); color:var(--accent-coral); border:1px solid var(--accent-coral); border-radius:6px; padding:4px 8px; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap;">
@@ -1504,7 +1514,7 @@ export function openReviewHangingShiftModal(record) {
   const dateStr = record.date || new Date().toISOString().slice(0, 10);
   const checkinTime = record.checkin_time || '--:--';
 
-  let suggestedCheckout = '12:00';
+  let suggestedCheckout = '11:30';
   const sNameLower = shiftName.toLowerCase();
   if (sNameLower.includes('tối') || sNameLower.includes('evening') || sNameLower.includes('đêm')) {
     suggestedCheckout = '23:00';
@@ -1517,6 +1527,7 @@ export function openReviewHangingShiftModal(record) {
   const idInput = document.getElementById('hangingShiftRecordId');
   const dateInput = document.getElementById('hangingShiftDate');
   const checkinInput = document.getElementById('hangingShiftCheckinTime');
+  const checkinEditInput = document.getElementById('hangingShiftCheckinInput');
   const nameEl = document.getElementById('hangingShiftStaffName');
   const shiftEl = document.getElementById('hangingShiftName');
   const dateDisplay = document.getElementById('hangingShiftDateDisplay');
@@ -1524,34 +1535,37 @@ export function openReviewHangingShiftModal(record) {
   const schedOutDisplay = document.getElementById('hangingShiftSchedOutDisplay');
   const checkoutInput = document.getElementById('hangingShiftCheckoutInput');
   const minutesInput = document.getElementById('hangingShiftMinutesInput');
+  const clearLateInput = document.getElementById('hangingShiftClearLate');
   const noteInput = document.getElementById('hangingShiftNoteInput');
 
   if (idInput) idInput.value = recId;
   if (dateInput) dateInput.value = dateStr;
   if (checkinInput) checkinInput.value = checkinTime;
+  if (checkinEditInput) checkinEditInput.value = (checkinTime && checkinTime !== '--:--') ? checkinTime.slice(0, 5) : '06:00';
   if (nameEl) nameEl.textContent = staffName;
   if (shiftEl) shiftEl.textContent = shiftName;
   if (dateDisplay) dateDisplay.textContent = dateStr;
   if (inDisplay) inDisplay.textContent = checkinTime;
   if (schedOutDisplay) schedOutDisplay.textContent = suggestedCheckout;
-  if (checkoutInput) checkoutInput.value = suggestedCheckout;
-  if (noteInput) noteInput.value = '';
+  if (checkoutInput) checkoutInput.value = (record.checkout_time && record.checkout_time !== '--:--') ? record.checkout_time.slice(0, 5) : suggestedCheckout;
+  if (clearLateInput) clearLateInput.checked = !record.is_late;
+  if (noteInput) noteInput.value = record.note || '';
 
   function calcMinutes(inTime, outTime) {
     try {
-      if (!inTime || !outTime || inTime === '--:--') return 300;
+      if (!inTime || !outTime || inTime === '--:--') return 330;
       const [h1, m1] = inTime.split(':').map(Number);
       const [h2, m2] = outTime.split(':').map(Number);
       let diff = (h2 * 60 + m2) - (h1 * 60 + m1);
       if (diff <= 0) diff += 1440;
       return Math.min(720, Math.max(30, diff));
     } catch {
-      return 300;
+      return 330;
     }
   }
 
   if (minutesInput) {
-    minutesInput.value = record.approved_minutes || calcMinutes(checkinTime, suggestedCheckout);
+    minutesInput.value = record.approved_minutes || calcMinutes(checkinEditInput ? checkinEditInput.value : checkinTime, checkoutInput ? checkoutInput.value : suggestedCheckout);
   }
 
   modal.classList.add('active');
@@ -1566,14 +1580,18 @@ export function closeReviewHangingShiftModal() {
 
 export async function submitReviewHangingShift() {
   const idInput = document.getElementById('hangingShiftRecordId');
+  const checkinEditInput = document.getElementById('hangingShiftCheckinInput');
   const checkoutInput = document.getElementById('hangingShiftCheckoutInput');
   const minutesInput = document.getElementById('hangingShiftMinutesInput');
+  const clearLateInput = document.getElementById('hangingShiftClearLate');
   const noteInput = document.getElementById('hangingShiftNoteInput');
   const submitBtn = document.getElementById('btnSubmitReviewHanging');
 
   const recordId = idInput ? idInput.value : '';
+  const checkinTime = checkinEditInput ? checkinEditInput.value : '';
   const checkoutTime = checkoutInput ? checkoutInput.value : '';
   const minutes = minutesInput ? parseInt(minutesInput.value, 10) : 0;
+  const clearLate = clearLateInput ? Boolean(clearLateInput.checked) : false;
   const note = noteInput ? noteInput.value.trim() : '';
 
   if (!recordId) {
@@ -1605,9 +1623,11 @@ export async function submitReviewHangingShift() {
       headers: reqHeaders,
       body: JSON.stringify({
         record_id: recordId,
+        approved_checkin_time: checkinTime || undefined,
         approved_checkout_time: checkoutTime,
         approved_minutes: minutes,
-        note: note || 'Quản lý duyệt ca quên check-out qua hệ thống'
+        clear_late: clearLate,
+        note: note || 'Quản lý duyệt ca & chỉnh giờ thực tế qua hệ thống'
       })
     });
     const d = await res.json();
@@ -1699,21 +1719,32 @@ if (typeof document !== 'undefined' && typeof document.addEventListener === 'fun
     const checkoutInput = document.getElementById('hangingShiftCheckoutInput');
     const minutesInput = document.getElementById('hangingShiftMinutesInput');
     const checkinInput = document.getElementById('hangingShiftCheckinTime');
-    if (checkoutInput && minutesInput && checkinInput) {
-      checkoutInput.addEventListener('change', () => {
-        try {
-          const inTime = checkinInput.value;
-          const outTime = checkoutInput.value;
-          if (inTime && outTime && inTime !== '--:--') {
-            const [h1, m1] = inTime.split(':').map(Number);
-            const [h2, m2] = outTime.split(':').map(Number);
-            let diff = (h2 * 60 + m2) - (h1 * 60 + m1);
-            if (diff <= 0) diff += 1440;
-            minutesInput.value = Math.min(720, Math.max(30, diff));
-          }
-        } catch {}
-      });
-    }
+    const checkinEditInput = document.getElementById('hangingShiftCheckinInput');
+    const recalcHangingMins = () => {
+      try {
+        const inTime = (checkinEditInput && checkinEditInput.value) || (checkinInput && checkinInput.value);
+        const outTime = checkoutInput && checkoutInput.value;
+        if (inTime && outTime && inTime !== '--:--') {
+          const [h1, m1] = inTime.split(':').map(Number);
+          const [h2, m2] = outTime.split(':').map(Number);
+          let diff = (h2 * 60 + m2) - (h1 * 60 + m1);
+          if (diff <= 0) diff += 1440;
+          if (minutesInput) minutesInput.value = Math.min(720, Math.max(30, diff));
+        }
+      } catch {}
+    };
+    if (checkoutInput) checkoutInput.addEventListener('change', recalcHangingMins);
+    if (checkinEditInput) checkinEditInput.addEventListener('change', recalcHangingMins);
+
+    // Tự động làm mới trạng thái ca trực khi nhân viên mở khóa màn hình iPhone / quay lại tab Safari
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        const tabAtt = document.getElementById('tabAttendance');
+        if (tabAtt && tabAtt.classList.contains('active')) {
+          loadAttendanceTab();
+        }
+      }
+    });
   });
 }
 

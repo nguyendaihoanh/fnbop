@@ -551,6 +551,23 @@ def get_staff_roster_slot(username: str, date_val: Any, shift_key: str) -> Optio
         if not period_data:
             return None
 
+        # 0. Kiểm tra slot nhân sự tăng cường (Reinforcement / Backup)
+        reinforcements = period_data.get("reinforcements", [])
+        if isinstance(reinforcements, list):
+            for r in reinforcements:
+                r_u = r.get("username") if isinstance(r, dict) else str(r)
+                if is_match(r_u):
+                    return {
+                        "slot_type": "reinforcement",
+                        "period": period_key,
+                        "is_reinforcement": True,
+                        "official_start": "06:00" if period_key == "morning" else "17:00",
+                        "tolerance_limit": "23:59",
+                        "official_end": "11:30" if period_key == "morning" else "23:00",
+                        "standard_checkout": "11:30" if period_key == "morning" else "23:00",
+                        "min_checkout": "06:00" if period_key == "morning" else "17:00"
+                    }
+
         if period_key == "evening":
             if is_match(period_data.get("service_18")):
                 return {
@@ -614,6 +631,17 @@ def get_staff_roster_slot(username: str, date_val: Any, shift_key: str) -> Optio
                         "official_end": "23:00",
                         "standard_checkout": "23:00",
                         "min_checkout": "22:00"
+                    }
+                elif any(is_match(s) for s in srv_list[2:]):
+                    return {
+                        "slot_type": "reinforcement",
+                        "is_reinforcement": True,
+                        "period": "evening",
+                        "official_start": "17:00",
+                        "tolerance_limit": "23:59",
+                        "official_end": "23:00",
+                        "standard_checkout": "23:00",
+                        "min_checkout": "17:00"
                     }
             return None
 
@@ -726,6 +754,20 @@ def auto_close_hanging_shifts_logic() -> Dict[str, Any]:
                         log.get("checkin_time", "06:00"),
                         checkout_target
                     )
+                    # Khóa trần an toàn tối đa 300 phút (5 tiếng) cho ca tăng cường
+                    is_reinf = bool(
+                        log.get("is_reinforcement") or
+                        str(log.get("roster_slot") or "").startswith("reinforcement")
+                    )
+                    if is_reinf and diff_mins > 300:
+                        diff_mins = 300
+                        try:
+                            cin_str = log.get("checkin_time", "06:00")
+                            cin_p = cin_str.split(":")
+                            c_dt = datetime.strptime(f"{effective_date} {int(cin_p[0]):02d}:{int(cin_p[1]):02d}", "%d/%m/%Y %H:%M")
+                            checkout_target = (c_dt + timedelta(minutes=300)).strftime("%H:%M")
+                        except Exception:
+                            pass
                     log["checkout_time"] = checkout_target
                     log["total_mins"] = diff_mins
                     
@@ -742,7 +784,10 @@ def auto_close_hanging_shifts_logic() -> Dict[str, Any]:
                     log["auto_closed"] = True
                     log["forgot_checkout"] = True
                     log["updated_at"] = now.isoformat()
-                    log["note"] = f"Hệ thống tự động chốt ca sau {cutoff_mins} phút quá giờ tan ca ({official_end_str}) do quên check-out."
+                    if is_reinf:
+                        log["note"] = "Hệ thống tự động chốt ca tăng cường (khóa trần tối đa 300 phút) do quên check-out."
+                    else:
+                        log["note"] = f"Hệ thống tự động chốt ca sau {cutoff_mins} phút quá giờ tan ca ({official_end_str}) do quên check-out."
         if closed_count > 0:
             save_attendance_logs(logs)
             for l in logs:
