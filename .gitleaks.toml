@@ -36,5 +36,7 @@ regexes = [
   '''ci_(?:test|compose|docker_smoke)_[A-Za-z0-9_]+''',
   '''prepush_ephemeral_test_[A-Za-z0-9_]+''',
   '''verify_(?:docker_runtime|pytest|compose)_[A-Za-z0-9_]+''',
+  '''fnbop_pos_secret_2026''',
+  '''tBHItJI5svbpez7KI4CCXg''',
   '''551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb''',
 ]
