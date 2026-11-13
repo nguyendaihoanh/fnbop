@@ -3,13 +3,13 @@
 # ==============================================================================
 
 # Stage 1: Dependencies installation
-FROM node:20-alpine AS deps
+FROM node:25-alpine AS deps
 WORKDIR /app
 COPY package.json ./
 RUN npm install --omit=dev --no-audit --no-fund && npm cache clean --force
 
 # Stage 2: Production runtime
-FROM node:20-alpine AS runner
+FROM node:25-alpine AS runner
 
 LABEL org.opencontainers.image.title="FnBOps Optional Zalo Gateway" \
       org.opencontainers.image.vendor="Nguyen Dai Hoanh (VNAIGC) <hoanh@vnaigc.com>" \
