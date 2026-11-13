@@ -515,6 +515,10 @@ def _ensure_so_cai_luong_and_attendance_enhancements(conn: sqlite3.Connection) -
             conn.execute("ALTER TABLE attendance_logs ADD COLUMN effective_duration_mins INTEGER DEFAULT 0;")
         if "is_hanging_pending" not in att_cols:
             conn.execute("ALTER TABLE attendance_logs ADD COLUMN is_hanging_pending BOOLEAN DEFAULT 0;")
+        if "is_late" not in att_cols:
+            conn.execute("ALTER TABLE attendance_logs ADD COLUMN is_late BOOLEAN DEFAULT 0;")
+        if "late_mins" not in att_cols:
+            conn.execute("ALTER TABLE attendance_logs ADD COLUMN late_mins INTEGER DEFAULT 0;")
     except Exception as e:
         logger.warning(f"Failed to evolve attendance_logs schema: {e}")
 
@@ -633,9 +637,10 @@ def _ensure_store_configs_table(conn: sqlite3.Connection) -> None:
 def init_db(db_path: Optional[str] = None) -> None:
     """Initializes the database schema with Multi-Tenancy indexes."""
     conn = get_db_connection(db_path)
-    cur = conn.cursor()
+    try:
+        cur = conn.cursor()
 
-    cur.executescript("""
+        cur.executescript("""
     -- 1. Tenants Table (Multi-Tenancy Foundation)
     CREATE TABLE IF NOT EXISTS tenants (
         id TEXT PRIMARY KEY,
@@ -727,6 +732,8 @@ def init_db(db_path: Optional[str] = None) -> None:
         checkout DATETIME,
         duration_mins INTEGER DEFAULT 0,
         status TEXT DEFAULT 'ON_TIME',
+        is_late BOOLEAN DEFAULT 0,
+        late_mins INTEGER DEFAULT 0,
         note TEXT,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
@@ -974,7 +981,7 @@ def init_db(db_path: Optional[str] = None) -> None:
     CREATE INDEX IF NOT EXISTS idx_payroll_conf_month ON payroll_confirmations(tenant_id, month);
     CREATE INDEX IF NOT EXISTS idx_payroll_conf_user ON payroll_confirmations(username);
 
-    -- 22. Store Configs Table (Multi-Tenant Store Configuration)
+        -- 22. Store Configs Table (Multi-Tenant Store Configuration)
     CREATE TABLE IF NOT EXISTS store_configs (
         tenant_id TEXT PRIMARY KEY,
         config_json TEXT NOT NULL,
@@ -983,33 +990,34 @@ def init_db(db_path: Optional[str] = None) -> None:
     );
     """)
 
-    # Run schema evolutions
-    _ensure_staff_accounts_table(conn)
-    _ensure_login_attempts_table(conn)
-    _ensure_staff_ledgers_table(conn)
-    _ensure_evaluations_table(conn)
-    _ensure_daily_closings_table(conn)
-    _ensure_v2_operational_tables(conn)
-    _ensure_payroll_confirmations_table(conn)
-    _ensure_so_cai_luong_and_attendance_enhancements(conn)
-    _ensure_store_configs_table(conn)
+        # Run schema evolutions
+        _ensure_staff_accounts_table(conn)
+        _ensure_login_attempts_table(conn)
+        _ensure_staff_ledgers_table(conn)
+        _ensure_evaluations_table(conn)
+        _ensure_daily_closings_table(conn)
+        _ensure_v2_operational_tables(conn)
+        _ensure_payroll_confirmations_table(conn)
+        _ensure_so_cai_luong_and_attendance_enhancements(conn)
+        _ensure_store_configs_table(conn)
 
-    # Seed default tenants if not exists
-    _ensure_default_tenants(conn)
+        # Seed default tenants if not exists
+        _ensure_default_tenants(conn)
 
-    # Seed default store_settings toggles
-    default_settings = [
-        ("auto_remind_shifts", "1", "Tự động nhắc ca theo mốc giờ vàng", "Tự động gửi thông báo lúc 06:15, 11:15, 17:15, 18:15, 22:30"),
-        ("emergency_remote_checkin", "0", "Mở Check-in ngoài quán (Sự cố mạng)", "Cho phép nhân viên check-in không cần WiFi quán khi rớt mạng/cúp điện"),
-        ("roster_registration_open", "1", "Mở cổng nộp lịch ca tuần mới", "Cho phép nhân viên nộp và chỉnh sửa lịch đăng ký ca làm tuần mới"),
-        ("peer_shift_swap_allowed", "1", "Cho phép nhân viên tự đổi ca", "Cho phép 2 nhân viên tự thương lượng và hoán đổi ca làm việc trực tiếp"),
-        ("payroll_verification_open", "1", "Mở kỳ đối soát & xác nhận lương", "Cho phép nhân viên xem chi tiết và ký xác nhận bảng tính công lương tháng"),
-        ("admin_token_version", "1", "Admin Session Token Version", "Phiên bản token bảo mật của Admin")
-    ]
-    cur.executemany("""
-        INSERT OR IGNORE INTO store_settings (key, value, label, description)
-        VALUES (?, ?, ?, ?)
-    """, default_settings)
+        # Seed default store_settings toggles
+        default_settings = [
+            ("auto_remind_shifts", "1", "Tự động nhắc ca theo mốc giờ vàng", "Tự động gửi thông báo lúc 06:15, 11:15, 17:15, 18:15, 22:30"),
+            ("emergency_remote_checkin", "0", "Mở Check-in ngoài quán (Sự cố mạng)", "Cho phép nhân viên check-in không cần WiFi quán khi rớt mạng/cúp điện"),
+            ("roster_registration_open", "1", "Mở cổng nộp lịch ca tuần mới", "Cho phép nhân viên nộp và chỉnh sửa lịch đăng ký ca làm tuần mới"),
+            ("peer_shift_swap_allowed", "1", "Cho phép nhân viên tự đổi ca", "Cho phép 2 nhân viên tự thương lượng và hoán đổi ca làm việc trực tiếp"),
+            ("payroll_verification_open", "1", "Mở kỳ đối soát & xác nhận lương", "Cho phép nhân viên xem chi tiết và ký xác nhận bảng tính công lương tháng"),
+            ("admin_token_version", "1", "Admin Session Token Version", "Phiên bản token bảo mật của Admin")
+        ]
+        cur.executemany("""
+            INSERT OR IGNORE INTO store_settings (key, value, label, description)
+            VALUES (?, ?, ?, ?)
+        """, default_settings)
 
-    conn.commit()
-    conn.close()
+        conn.commit()
+    finally:
+        conn.close()

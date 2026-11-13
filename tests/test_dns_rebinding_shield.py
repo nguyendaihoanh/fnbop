@@ -54,6 +54,38 @@ class TestDNSRebindingShield(unittest.TestCase):
         self.assertFalse(is_allowed_host(None))
         # Public IP that is not in the whitelist
         self.assertFalse(is_allowed_host("8.8.8.8"))
+        # Hardcoded private company domain must NOT bypass ALLOWED_HOSTS unless configured
+        prev_allowed = os.environ.get("ALLOWED_HOSTS")
+        prev_edge = os.environ.get("EDGE_INGRESS_HOST")
+        try:
+            os.environ["ALLOWED_HOSTS"] = "*.example.com,pos.custom.org"
+            os.environ.pop("EDGE_INGRESS_HOST", None)
+            self.assertFalse(is_allowed_host("app.vnaigc.com"))
+            self.assertTrue(is_allowed_host("shop.example.com"))
+            self.assertTrue(is_allowed_host("a.b.example.com:8443"))
+            self.assertTrue(is_allowed_host("pos.custom.org"))
+            self.assertFalse(is_allowed_host("evil-example.com"))
+            self.assertFalse(is_allowed_host("example.com"))
+        finally:
+            if prev_allowed is None:
+                os.environ.pop("ALLOWED_HOSTS", None)
+            else:
+                os.environ["ALLOWED_HOSTS"] = prev_allowed
+            if prev_edge is not None:
+                os.environ["EDGE_INGRESS_HOST"] = prev_edge
+
+    def test_03b_reject_insecure_wildcards(self):
+        """Bare wildcards or TLD-level wildcards in ALLOWED_HOSTS must never match arbitrary domains."""
+        prev_allowed = os.environ.get("ALLOWED_HOSTS")
+        try:
+            os.environ["ALLOWED_HOSTS"] = "*,*.com"
+            self.assertFalse(is_allowed_host("attacker.com"))
+            self.assertFalse(is_allowed_host("anything.org"))
+        finally:
+            if prev_allowed is None:
+                os.environ.pop("ALLOWED_HOSTS", None)
+            else:
+                os.environ["ALLOWED_HOSTS"] = prev_allowed
 
     # --------------------------------------------------------------------------
     # 2. INTEGRATION TESTS: HTTP Middleware behavior

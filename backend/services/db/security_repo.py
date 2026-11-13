@@ -36,69 +36,66 @@ def record_failed_attempt_tiered(
     ip_key = f"ip:{clean_ip}"
     now = time.time()
 
-    conn = get_db_connection(db_path)
-    _ensure_login_attempts_table(conn)
-    cur = conn.cursor()
+    with write_transaction(db_path) as cur:
+        _ensure_login_attempts_table(cur.connection)
+        cur.execute("""
+            SELECT attempts, tier, lockout_until, is_admin_locked 
+            FROM login_attempts 
+            WHERE (target_key = ? OR identifier = ?)
+               OR (target_key = ? OR identifier = ?)
+            ORDER BY attempts DESC
+            LIMIT 1
+        """, (user_key or "", clean_user or "", ip_key or "", clean_ip or ""))
+        row = cur.fetchone()
 
-    cur.execute("""
-        SELECT attempts, tier, lockout_until, is_admin_locked 
-        FROM login_attempts 
-        WHERE (target_key = ? OR identifier = ?)
-           OR (target_key = ? OR identifier = ?)
-        ORDER BY attempts DESC
-        LIMIT 1
-    """, (user_key or "", clean_user or "", ip_key or "", clean_ip or ""))
-    row = cur.fetchone()
-
-    if row is None:
-        attempts = 1
-    else:
-        attempts = row["attempts"] + 1
-
-    tier = 1
-    lockout_until = None
-    is_admin_locked = 0
-    target_key = user_key
-    target_type = "USER"
-    identifier = clean_user if clean_user else clean_ip
-
-    if attempts >= 11:
-        # TIER 3: Lock for 5 hours (18000s), Admin only unlock
-        tier = 3
-        lockout_until = now + 18000.0
-        is_admin_locked = 1
-        if is_whitelisted_cafe and clean_user:
-            target_key = user_key
-            target_type = "USER"
-            identifier = clean_user
+        if row is None:
+            attempts = 1
         else:
-            target_key = ip_key
-            target_type = "IP"
-            identifier = clean_ip
-    elif attempts >= 6:
-        # TIER 2: Lock for 30 minutes (1800s)
-        tier = 2
-        lockout_until = now + 1800.0
-        is_admin_locked = 0
-        if is_whitelisted_cafe and clean_user:
-            target_key = user_key
-            target_type = "USER"
-            identifier = clean_user
-        else:
-            target_key = ip_key
-            target_type = "IP"
-            identifier = clean_ip
-    elif attempts >= 5:
-        # TIER 1: Lock username for 60 seconds
+            attempts = row["attempts"] + 1
+
         tier = 1
-        lockout_until = now + 60.0
+        lockout_until = None
         is_admin_locked = 0
         target_key = user_key
         target_type = "USER"
         identifier = clean_user if clean_user else clean_ip
 
-    with conn:
-        conn.execute("""
+        if attempts >= 11:
+            # TIER 3: Lock for 5 hours (18000s), Admin only unlock
+            tier = 3
+            lockout_until = now + 18000.0
+            is_admin_locked = 1
+            if is_whitelisted_cafe and clean_user:
+                target_key = user_key
+                target_type = "USER"
+                identifier = clean_user
+            else:
+                target_key = ip_key
+                target_type = "IP"
+                identifier = clean_ip
+        elif attempts >= 6:
+            # TIER 2: Lock for 30 minutes (1800s)
+            tier = 2
+            lockout_until = now + 1800.0
+            is_admin_locked = 0
+            if is_whitelisted_cafe and clean_user:
+                target_key = user_key
+                target_type = "USER"
+                identifier = clean_user
+            else:
+                target_key = ip_key
+                target_type = "IP"
+                identifier = clean_ip
+        elif attempts >= 5:
+            # TIER 1: Lock username for 60 seconds
+            tier = 1
+            lockout_until = now + 60.0
+            is_admin_locked = 0
+            target_key = user_key
+            target_type = "USER"
+            identifier = clean_user if clean_user else clean_ip
+
+        cur.execute("""
             INSERT INTO login_attempts (target_key, target_type, identifier, ip, username, attempts, tier, lockout_until, is_admin_locked, updated_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
             ON CONFLICT(target_key) DO UPDATE SET
@@ -112,8 +109,6 @@ def record_failed_attempt_tiered(
                 is_admin_locked = excluded.is_admin_locked,
                 updated_at = CURRENT_TIMESTAMP
         """, (target_key, target_type, identifier, clean_ip, clean_user, attempts, tier, lockout_until, is_admin_locked))
-
-    conn.close()
 
     msg = None
     if is_admin_locked == 1 or tier >= 3:
@@ -152,18 +147,20 @@ def check_login_lockout(
     now = time.time()
 
     conn = get_db_connection(db_path)
-    _ensure_login_attempts_table(conn)
-    cur = conn.cursor()
+    try:
+        _ensure_login_attempts_table(conn)
+        cur = conn.cursor()
 
-    cur.execute("""
-        SELECT target_key, target_type, identifier, ip, username, attempts, tier, lockout_until, is_admin_locked
-        FROM login_attempts
-        WHERE (target_key = ? OR identifier = ?)
-           OR (target_key = ? OR identifier = ?)
-        ORDER BY is_admin_locked DESC, tier DESC, attempts DESC
-    """, (user_key or "", clean_user or "", ip_key or "", clean_ip or ""))
-    rows = cur.fetchall()
-    conn.close()
+        cur.execute("""
+            SELECT target_key, target_type, identifier, ip, username, attempts, tier, lockout_until, is_admin_locked
+            FROM login_attempts
+            WHERE (target_key = ? OR identifier = ?)
+               OR (target_key = ? OR identifier = ?)
+            ORDER BY is_admin_locked DESC, tier DESC, attempts DESC
+        """, (user_key or "", clean_user or "", ip_key or "", clean_ip or ""))
+        rows = cur.fetchall()
+    finally:
+        conn.close()
 
     for row in rows:
         r_dict = dict(row)
@@ -196,29 +193,33 @@ def clear_login_lockout(ip: str, username: str = "", db_path: Optional[str] = No
     ip_key = f"ip:{clean_ip}" if clean_ip else ""
 
     conn = get_db_connection(db_path)
-    _ensure_login_attempts_table(conn)
-    with conn:
-        conn.execute("""
-            DELETE FROM login_attempts 
-            WHERE target_key = ? OR target_key = ? OR identifier = ? OR identifier = ? OR ip = ?
-        """, (user_key, ip_key, clean_user, clean_ip, clean_ip))
-    conn.close()
+    try:
+        _ensure_login_attempts_table(conn)
+        with conn:
+            conn.execute("""
+                DELETE FROM login_attempts 
+                WHERE target_key = ? OR target_key = ? OR identifier = ? OR identifier = ? OR ip = ?
+            """, (user_key, ip_key, clean_user, clean_ip, clean_ip))
+    finally:
+        conn.close()
 
 
 def get_active_lockouts(db_path: Optional[str] = None) -> List[Dict[str, Any]]:
     """Retrieves all currently locked out accounts and IPs for Admin Dashboard."""
     conn = get_db_connection(db_path)
-    _ensure_login_attempts_table(conn)
-    now = time.time()
-    cur = conn.cursor()
-    cur.execute("""
-        SELECT target_key, target_type, identifier, ip, username, attempts, tier, lockout_until, is_admin_locked, updated_at
-        FROM login_attempts
-        WHERE is_admin_locked = 1 OR (lockout_until IS NOT NULL AND lockout_until > ?)
-        ORDER BY updated_at DESC
-    """, (now,))
-    rows = cur.fetchall()
-    conn.close()
+    try:
+        _ensure_login_attempts_table(conn)
+        now = time.time()
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT target_key, target_type, identifier, ip, username, attempts, tier, lockout_until, is_admin_locked, updated_at
+            FROM login_attempts
+            WHERE is_admin_locked = 1 OR (lockout_until IS NOT NULL AND lockout_until > ?)
+            ORDER BY updated_at DESC
+        """, (now,))
+        rows = cur.fetchall()
+    finally:
+        conn.close()
 
     result = []
     for r in rows:
@@ -241,16 +242,18 @@ def admin_unlock_target(target_key: str, db_path: Optional[str] = None) -> bool:
         raw_val = clean_target[5:]
 
     conn = get_db_connection(db_path)
-    _ensure_login_attempts_table(conn)
-    with conn:
-        cur = conn.execute("""
-            DELETE FROM login_attempts 
-            WHERE target_key = ? OR target_key = ? OR target_key = ?
-               OR identifier = ? OR identifier = ?
-               OR ip = ? OR username = ?
-        """, (clean_target, f"ip:{raw_val}", f"user:{raw_val}", clean_target, raw_val, raw_val, raw_val))
-        deleted = cur.rowcount
-    conn.close()
+    try:
+        _ensure_login_attempts_table(conn)
+        with conn:
+            cur = conn.execute("""
+                DELETE FROM login_attempts 
+                WHERE target_key = ? OR target_key = ? OR target_key = ?
+                   OR identifier = ? OR identifier = ?
+                   OR ip = ? OR username = ?
+            """, (clean_target, f"ip:{raw_val}", f"user:{raw_val}", clean_target, raw_val, raw_val, raw_val))
+            deleted = cur.rowcount
+    finally:
+        conn.close()
     return deleted > 0
 
 
@@ -260,17 +263,19 @@ def get_login_attempts(ip: str, db_path: Optional[str] = None) -> Optional[Dict[
     if not clean_ip:
         return None
     conn = get_db_connection(db_path)
-    _ensure_login_attempts_table(conn)
-    cur = conn.cursor()
-    cur.execute("""
-        SELECT target_key, target_type, identifier, ip, username, attempts, tier, lockout_until, is_admin_locked
-        FROM login_attempts
-        WHERE ip = ? OR target_key = ? OR identifier = ?
-        ORDER BY is_admin_locked DESC, tier DESC, attempts DESC
-        LIMIT 1
-    """, (clean_ip, f"ip:{clean_ip}", clean_ip))
-    row = cur.fetchone()
-    conn.close()
+    try:
+        _ensure_login_attempts_table(conn)
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT target_key, target_type, identifier, ip, username, attempts, tier, lockout_until, is_admin_locked
+            FROM login_attempts
+            WHERE ip = ? OR target_key = ? OR identifier = ?
+            ORDER BY is_admin_locked DESC, tier DESC, attempts DESC
+            LIMIT 1
+        """, (clean_ip, f"ip:{clean_ip}", clean_ip))
+        row = cur.fetchone()
+    finally:
+        conn.close()
     if row:
         return dict(row)
     return None
@@ -469,6 +474,7 @@ def record_access_audit(
     Records an access event into SQLite WAL table access_audit_logs.
     Fail-safe: Wrapped in try-except so it never blocks or crashes business operations.
     """
+    conn = None
     try:
         os_name, device_type = parse_user_agent(user_agent)
         ts_now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -496,11 +502,13 @@ def record_access_audit(
                     tenant_id
                 )
             )
-        conn.close()
         return True
     except Exception as e:
         logger.warning(f"Non-blocking audit log record failure: {e}")
         return False
+    finally:
+        if conn is not None:
+            conn.close()
 
 
 def get_access_audit_logs(

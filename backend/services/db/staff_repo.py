@@ -25,14 +25,16 @@ logger = logging.getLogger("db_service")
 
 def get_staff_by_username(username: str, tenant_id: str = DEFAULT_TENANT_ID, db_path: Optional[str] = None) -> Optional[Dict[str, Any]]:
     conn = get_db_connection(db_path)
-    _ensure_staff_accounts_table(conn)
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT * FROM staff_accounts WHERE username = ? AND tenant_id = ?",
-        (str(username).strip().lower(), tenant_id)
-    )
-    row = cur.fetchone()
-    conn.close()
+    try:
+        _ensure_staff_accounts_table(conn)
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT * FROM staff_accounts WHERE username = ? AND tenant_id = ?",
+            (str(username).strip().lower(), tenant_id)
+        )
+        row = cur.fetchone()
+    finally:
+        conn.close()
     if not row:
         return None
     d = dict(row)
@@ -43,21 +45,23 @@ def get_staff_by_username(username: str, tenant_id: str = DEFAULT_TENANT_ID, db_
 
 def list_staff_accounts(tenant_id: str = DEFAULT_TENANT_ID, db_path: Optional[str] = None) -> List[Dict[str, Any]]:
     conn = get_db_connection(db_path)
-    _ensure_staff_accounts_table(conn)
-    cur = conn.cursor()
-    cur.execute(
-        """SELECT username, employee_id, tenant_id, full_name, display_name, role, pin_hash,
-                  email, phone, hourly_rate, is_active, position, gender, status,
-                  last_login, created_at
-           FROM staff_accounts WHERE tenant_id = ? ORDER BY full_name ASC""",
-        (tenant_id,)
-    )
-    rows = []
-    for r in cur.fetchall():
-        d = dict(r)
-        d["is_active"] = bool(d["is_active"])
-        rows.append(d)
-    conn.close()
+    try:
+        _ensure_staff_accounts_table(conn)
+        cur = conn.cursor()
+        cur.execute(
+            """SELECT username, employee_id, tenant_id, full_name, display_name, role, pin_hash,
+                      email, phone, hourly_rate, is_active, position, gender, status,
+                      last_login, created_at
+               FROM staff_accounts WHERE tenant_id = ? ORDER BY full_name ASC""",
+            (tenant_id,)
+        )
+        rows = []
+        for r in cur.fetchall():
+            d = dict(r)
+            d["is_active"] = bool(d["is_active"])
+            rows.append(d)
+    finally:
+        conn.close()
     return rows
 
 
@@ -101,70 +105,72 @@ def upsert_staff_account(
         final_allowed_roles = "[]"
 
     conn = get_db_connection(db_path)
-    _ensure_staff_accounts_table(conn)
-    clean_u = str(username).strip().lower()
-    final_emp_id = (employee_id or "").strip()
-    if not final_emp_id:
-        cur = conn.cursor()
-        cur.execute("SELECT employee_id FROM staff_accounts WHERE username = ?", (clean_u,))
-        existing = cur.fetchone()
-        if existing and existing["employee_id"]:
-            final_emp_id = existing["employee_id"]
-        else:
-            cur.execute("SELECT COUNT(*) FROM staff_accounts")
-            next_num = (cur.fetchone()[0] or 0) + 1
-            final_emp_id = f"EMP_{next_num:03d}"
+    try:
+        _ensure_staff_accounts_table(conn)
+        clean_u = str(username).strip().lower()
+        final_emp_id = (employee_id or "").strip()
+        if not final_emp_id:
+            cur = conn.cursor()
+            cur.execute("SELECT employee_id FROM staff_accounts WHERE username = ?", (clean_u,))
+            existing = cur.fetchone()
+            if existing and existing["employee_id"]:
+                final_emp_id = existing["employee_id"]
+            else:
+                cur.execute("SELECT COUNT(*) FROM staff_accounts")
+                next_num = (cur.fetchone()[0] or 0) + 1
+                final_emp_id = f"EMP_{next_num:03d}"
 
-    final_token_ver = int(token_version) if token_version is not None else 1
+        final_token_ver = int(token_version) if token_version is not None else 1
 
-    with conn:
-        conn.execute("""
-            INSERT INTO staff_accounts (
-                username, employee_id, tenant_id, full_name, display_name, pin_hash,
-                role, position, gender, status, email, phone, hourly_rate, is_active, allowed_roles,
-                salary_type, fixed_salary, token_version
-            )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ON CONFLICT(username) DO UPDATE SET
-                employee_id = CASE WHEN staff_accounts.employee_id IS NULL OR staff_accounts.employee_id = '' THEN excluded.employee_id ELSE staff_accounts.employee_id END,
-                full_name = excluded.full_name,
-                display_name = excluded.display_name,
-                pin_hash = CASE WHEN excluded.pin_hash != '' THEN excluded.pin_hash ELSE staff_accounts.pin_hash END,
-                role = excluded.role,
-                position = excluded.position,
-                gender = excluded.gender,
-                status = excluded.status,
-                email = COALESCE(excluded.email, staff_accounts.email),
-                phone = COALESCE(excluded.phone, staff_accounts.phone),
-                hourly_rate = excluded.hourly_rate,
-                is_active = excluded.is_active,
-                allowed_roles = CASE WHEN excluded.allowed_roles != '[]' THEN excluded.allowed_roles ELSE staff_accounts.allowed_roles END,
-                salary_type = excluded.salary_type,
-                fixed_salary = excluded.fixed_salary,
-                token_version = CASE WHEN ? IS NOT NULL THEN ? ELSE COALESCE(staff_accounts.token_version, 1) END
-        """, (
-            clean_u,
-            final_emp_id,
-            tenant_id,
-            final_full_name,
-            final_display_name,
-            pin_hash,
-            role.upper(),
-            position,
-            gender,
-            final_status,
-            email,
-            phone,
-            hourly_rate,
-            final_is_active,
-            final_allowed_roles,
-            (salary_type or "HOURLY").upper(),
-            int(fixed_salary or 0),
-            final_token_ver,
-            token_version,
-            token_version
-        ))
-    conn.close()
+        with conn:
+            conn.execute("""
+                INSERT INTO staff_accounts (
+                    username, employee_id, tenant_id, full_name, display_name, pin_hash,
+                    role, position, gender, status, email, phone, hourly_rate, is_active, allowed_roles,
+                    salary_type, fixed_salary, token_version
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(username) DO UPDATE SET
+                    employee_id = CASE WHEN staff_accounts.employee_id IS NULL OR staff_accounts.employee_id = '' THEN excluded.employee_id ELSE staff_accounts.employee_id END,
+                    full_name = excluded.full_name,
+                    display_name = excluded.display_name,
+                    pin_hash = CASE WHEN excluded.pin_hash != '' THEN excluded.pin_hash ELSE staff_accounts.pin_hash END,
+                    role = excluded.role,
+                    position = excluded.position,
+                    gender = excluded.gender,
+                    status = excluded.status,
+                    email = COALESCE(excluded.email, staff_accounts.email),
+                    phone = COALESCE(excluded.phone, staff_accounts.phone),
+                    hourly_rate = excluded.hourly_rate,
+                    is_active = excluded.is_active,
+                    allowed_roles = CASE WHEN excluded.allowed_roles != '[]' THEN excluded.allowed_roles ELSE staff_accounts.allowed_roles END,
+                    salary_type = excluded.salary_type,
+                    fixed_salary = excluded.fixed_salary,
+                    token_version = CASE WHEN ? IS NOT NULL THEN ? ELSE COALESCE(staff_accounts.token_version, 1) END
+            """, (
+                clean_u,
+                final_emp_id,
+                tenant_id,
+                final_full_name,
+                final_display_name,
+                pin_hash,
+                role.upper(),
+                position,
+                gender,
+                final_status,
+                email,
+                phone,
+                hourly_rate,
+                final_is_active,
+                final_allowed_roles,
+                (salary_type or "HOURLY").upper(),
+                int(fixed_salary or 0),
+                final_token_ver,
+                token_version,
+                token_version
+            ))
+    finally:
+        conn.close()
 
 
 def get_staff_token_version(username: str, tenant_id: str = DEFAULT_TENANT_ID, db_path: Optional[str] = None) -> int:
@@ -215,41 +221,42 @@ def get_staff_directory_map(
     Returns a dictionary of all staff accounts keyed by username, enriched with employee_id and aliases from SQLite.
     """
     conn = get_db_connection(db_path)
-    _ensure_staff_accounts_table(conn)
-    cur = conn.cursor()
-    cur.execute(
-        """SELECT username, employee_id, full_name, display_name, role, position, gender, status, hourly_rate, is_active
-           FROM staff_accounts WHERE tenant_id = ? ORDER BY employee_id ASC, username ASC""",
-        (tenant_id,)
-    )
     directory: Dict[str, Dict[str, Any]] = {}
-    for r in cur.fetchall():
-        u = r["username"]
-        directory[u] = {
-            "username": u,
-            "employee_id": r["employee_id"] or "",
-            "full_name": r["full_name"] or u,
-            "display_name": r["display_name"] or r["full_name"] or u,
-            "role": r["role"] or "STAFF",
-            "position": r["position"] or "SERVICE",
-            "gender": r["gender"] or "NAM",
-            "status": r["status"] or "ACTIVE",
-            "hourly_rate": int(r["hourly_rate"] or 17000),
-            "is_active": bool(r["is_active"]),
-            "aliases": []
-        }
-
     try:
-        cur.execute("SELECT username, alias FROM staff_aliases WHERE tenant_id = ?", (tenant_id,))
-        for ar in cur.fetchall():
-            u = ar["username"]
-            al = ar["alias"]
-            if u in directory and al and al not in directory[u]["aliases"]:
-                directory[u]["aliases"].append(al)
-    except Exception:
-        pass
+        _ensure_staff_accounts_table(conn)
+        cur = conn.cursor()
+        cur.execute(
+            """SELECT username, employee_id, full_name, display_name, role, position, gender, status, hourly_rate, is_active
+               FROM staff_accounts WHERE tenant_id = ? ORDER BY employee_id ASC, username ASC""",
+            (tenant_id,)
+        )
+        for r in cur.fetchall():
+            u = r["username"]
+            directory[u] = {
+                "username": u,
+                "employee_id": r["employee_id"] or "",
+                "full_name": r["full_name"] or u,
+                "display_name": r["display_name"] or r["full_name"] or u,
+                "role": r["role"] or "STAFF",
+                "position": r["position"] or "SERVICE",
+                "gender": r["gender"] or "NAM",
+                "status": r["status"] or "ACTIVE",
+                "hourly_rate": int(r["hourly_rate"] or 17000),
+                "is_active": bool(r["is_active"]),
+                "aliases": []
+            }
 
-    conn.close()
+        try:
+            cur.execute("SELECT username, alias FROM staff_aliases WHERE tenant_id = ?", (tenant_id,))
+            for ar in cur.fetchall():
+                u = ar["username"]
+                al = ar["alias"]
+                if u in directory and al and al not in directory[u]["aliases"]:
+                    directory[u]["aliases"].append(al)
+        except Exception:
+            pass
+    finally:
+        conn.close()
     return directory
 
 
@@ -332,105 +339,105 @@ def bootstrap_sync_staff_auth_to_sqlite(
             def needs_rehash(p: str) -> bool: return False
 
     conn = get_db_connection(db_path)
-    _ensure_staff_accounts_table(conn)
-    _ensure_payroll_confirmations_table(conn)
-
     synced_staff = 0
     synced_conf = 0
     synced_locks = 0
+    try:
+        _ensure_staff_accounts_table(conn)
+        _ensure_payroll_confirmations_table(conn)
 
-    with conn:
-        for idx, (u_key, acc) in enumerate(accounts.items(), start=1):
-            u_norm = str(u_key).strip().lower()
-            emp_id = acc.get("employee_id") or f"EMP_{idx:03d}"
-            full_name = acc.get("full_name") or u_key
-            pin_raw = str(acc.get("pin", "1234")).strip()
-            pin_hash = hash_pin(pin_raw) if needs_rehash(pin_raw) else pin_raw
-            role = str(acc.get("role", "STAFF")).strip().upper()
-            position = acc.get("position", "SERVICE")
-            gender = acc.get("gender", "NAM")
-            status = acc.get("status", "ACTIVE")
-            is_active = 0 if status == "INACTIVE" else 1
-            email = acc.get("email", "")
-            phone = acc.get("phone", "")
-            hourly_rate = int(acc.get("hourly_rate", 17000))
-            last_login = acc.get("last_login")
-            created_at = acc.get("created_at") or datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            allowed_roles = acc.get("allowed_roles")
-            allowed_roles_json = json.dumps(allowed_roles, ensure_ascii=False) if allowed_roles is not None else "[]"
+        with conn:
+            for idx, (u_key, acc) in enumerate(accounts.items(), start=1):
+                u_norm = str(u_key).strip().lower()
+                emp_id = acc.get("employee_id") or f"EMP_{idx:03d}"
+                full_name = acc.get("full_name") or u_key
+                pin_raw = str(acc.get("pin", "1234")).strip()
+                pin_hash = hash_pin(pin_raw) if needs_rehash(pin_raw) else pin_raw
+                role = str(acc.get("role", "STAFF")).strip().upper()
+                position = acc.get("position", "SERVICE")
+                gender = acc.get("gender", "NAM")
+                status = acc.get("status", "ACTIVE")
+                is_active = 0 if status == "INACTIVE" else 1
+                email = acc.get("email", "")
+                phone = acc.get("phone", "")
+                hourly_rate = int(acc.get("hourly_rate", 17000))
+                last_login = acc.get("last_login")
+                created_at = acc.get("created_at") or datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                allowed_roles = acc.get("allowed_roles")
+                allowed_roles_json = json.dumps(allowed_roles, ensure_ascii=False) if allowed_roles is not None else "[]"
 
-            token_ver = int(acc.get("token_version", 1))
+                token_ver = int(acc.get("token_version", 1))
 
-            conn.execute("""
-                INSERT INTO staff_accounts (
-                    username, employee_id, tenant_id, full_name, display_name, pin_hash,
+                conn.execute("""
+                    INSERT INTO staff_accounts (
+                        username, employee_id, tenant_id, full_name, display_name, pin_hash,
+                        role, position, gender, status, email, phone, hourly_rate, is_active,
+                        allowed_roles, token_version, last_login, created_at
+                    )
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ON CONFLICT(username) DO UPDATE SET
+                        employee_id = CASE WHEN staff_accounts.employee_id IS NULL OR staff_accounts.employee_id = '' THEN excluded.employee_id ELSE staff_accounts.employee_id END,
+                        full_name = excluded.full_name,
+                        display_name = excluded.display_name,
+                        pin_hash = CASE WHEN excluded.pin_hash != '' THEN excluded.pin_hash ELSE staff_accounts.pin_hash END,
+                        role = excluded.role,
+                        position = excluded.position,
+                        gender = excluded.gender,
+                        status = excluded.status,
+                        hourly_rate = excluded.hourly_rate,
+                        is_active = excluded.is_active,
+                        allowed_roles = CASE WHEN excluded.allowed_roles != '[]' THEN excluded.allowed_roles ELSE staff_accounts.allowed_roles END,
+                        token_version = COALESCE(excluded.token_version, staff_accounts.token_version, 1),
+                        last_login = COALESCE(excluded.last_login, staff_accounts.last_login)
+                """, (
+                    u_norm, emp_id, tenant_id, full_name, full_name, pin_hash,
                     role, position, gender, status, email, phone, hourly_rate, is_active,
-                    allowed_roles, token_version, last_login, created_at
-                )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(username) DO UPDATE SET
-                    employee_id = CASE WHEN staff_accounts.employee_id IS NULL OR staff_accounts.employee_id = '' THEN excluded.employee_id ELSE staff_accounts.employee_id END,
-                    full_name = excluded.full_name,
-                    display_name = excluded.display_name,
-                    pin_hash = CASE WHEN excluded.pin_hash != '' THEN excluded.pin_hash ELSE staff_accounts.pin_hash END,
-                    role = excluded.role,
-                    position = excluded.position,
-                    gender = excluded.gender,
-                    status = excluded.status,
-                    hourly_rate = excluded.hourly_rate,
-                    is_active = excluded.is_active,
-                    allowed_roles = CASE WHEN excluded.allowed_roles != '[]' THEN excluded.allowed_roles ELSE staff_accounts.allowed_roles END,
-                    token_version = COALESCE(excluded.token_version, staff_accounts.token_version, 1),
-                    last_login = COALESCE(excluded.last_login, staff_accounts.last_login)
-            """, (
-                u_norm, emp_id, tenant_id, full_name, full_name, pin_hash,
-                role, position, gender, status, email, phone, hourly_rate, is_active,
-                allowed_roles_json, token_ver, last_login, created_at
-            ))
-            synced_staff += 1
+                    allowed_roles_json, token_ver, last_login, created_at
+                ))
+                synced_staff += 1
 
-            # Sync aliases & sheet_names
-            aliases = set(acc.get("aliases", []))
-            aliases.update(acc.get("sheet_names", []))
-            aliases.add(full_name)
-            for al in aliases:
-                if al:
-                    conn.execute("""
-                        INSERT OR IGNORE INTO staff_aliases (username, alias, tenant_id)
-                        VALUES (?, ?, ?)
-                    """, (u_norm, str(al).strip(), tenant_id))
+                # Sync aliases & sheet_names
+                aliases = set(acc.get("aliases", []))
+                aliases.update(acc.get("sheet_names", []))
+                aliases.add(full_name)
+                for al in aliases:
+                    if al:
+                        conn.execute("""
+                            INSERT OR IGNORE INTO staff_aliases (username, alias, tenant_id)
+                            VALUES (?, ?, ?)
+                        """, (u_norm, str(al).strip(), tenant_id))
 
-            # Sync confirmations
-            confirmations = acc.get("confirmations", {})
-            if isinstance(confirmations, dict):
-                for m_key, conf_data in confirmations.items():
-                    c_status = conf_data.get("status", "CONFIRMED")
-                    c_note = conf_data.get("note", "")
-                    c_ts = conf_data.get("timestamp", "")
-                    conn.execute("""
-                        INSERT INTO payroll_confirmations (tenant_id, username, month, status, note, timestamp)
-                        VALUES (?, ?, ?, ?, ?, ?)
-                        ON CONFLICT(tenant_id, username, month) DO UPDATE SET
-                            status = excluded.status,
-                            note = excluded.note,
-                            timestamp = excluded.timestamp
-                    """, (tenant_id, u_norm, str(m_key), c_status, c_note, c_ts))
-                    synced_conf += 1
+                # Sync confirmations
+                confirmations = acc.get("confirmations", {})
+                if isinstance(confirmations, dict):
+                    for m_key, conf_data in confirmations.items():
+                        c_status = conf_data.get("status", "CONFIRMED")
+                        c_note = conf_data.get("note", "")
+                        c_ts = conf_data.get("timestamp", "")
+                        conn.execute("""
+                            INSERT INTO payroll_confirmations (tenant_id, username, month, status, note, timestamp)
+                            VALUES (?, ?, ?, ?, ?, ?)
+                            ON CONFLICT(tenant_id, username, month) DO UPDATE SET
+                                status = excluded.status,
+                                note = excluded.note,
+                                timestamp = excluded.timestamp
+                        """, (tenant_id, u_norm, str(m_key), c_status, c_note, c_ts))
+                        synced_conf += 1
 
-        # Sync payroll_locks
-        for m_key, lock_val in locks.items():
-            l_status = lock_val.get("status", "OPEN")
-            msg = lock_val.get("message", "")
-            conn.execute("""
-                INSERT INTO payroll_locks (month, tenant_id, status, message)
-                VALUES (?, ?, ?, ?)
-                ON CONFLICT(month, tenant_id) DO UPDATE SET
-                    status = excluded.status,
-                    message = excluded.message
-            """, (str(m_key), tenant_id, l_status, msg))
-            synced_locks += 1
-
-    conn.close()
+            # Sync payroll_locks
+            for m_key, lock_val in locks.items():
+                l_status = lock_val.get("status", "OPEN")
+                msg = lock_val.get("message", "")
+                conn.execute("""
+                    INSERT INTO payroll_locks (month, tenant_id, status, message)
+                    VALUES (?, ?, ?, ?)
+                    ON CONFLICT(month, tenant_id) DO UPDATE SET
+                        status = excluded.status,
+                        message = excluded.message
+                """, (str(m_key), tenant_id, l_status, msg))
+                synced_locks += 1
+    finally:
+        conn.close()
     return {
         "success": True,
         "synced_staff": synced_staff,

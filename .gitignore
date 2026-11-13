@@ -71,6 +71,7 @@ node_modules/
 # PID files
 *.pid
 gateway.pid
+.deploy_prev_commit
 
 # Private live test suites
 tests/test_live_production_suite.py

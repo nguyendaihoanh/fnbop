@@ -20,6 +20,8 @@ services:
       - AUTH_FILE=/data/staff_auth.json
       - APPROVALS_FILE=/data/shift_approvals.json
       - STORE_NAME=${STORE_NAME:-FnBOps Store Lounge}
+      - ALLOWED_HOSTS=${ALLOWED_HOSTS:-}
+      - EDGE_INGRESS_HOST=${EDGE_INGRESS_HOST:-}
     volumes:
       - fnbops_data:/data
     ports:

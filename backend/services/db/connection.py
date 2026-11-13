@@ -106,15 +106,18 @@ def checkpoint_db(db_path: Optional[str] = None, mode: str = "PASSIVE") -> bool:
     """
     valid_modes = {"PASSIVE", "FULL", "RESTART", "TRUNCATE"}
     target_mode = mode.upper() if mode and mode.upper() in valid_modes else "PASSIVE"
+    conn = None
     try:
         conn = get_db_connection(db_path)
         cur = conn.cursor()
         cur.execute(f"PRAGMA wal_checkpoint({target_mode});")
-        conn.close()
         return True
     except Exception as e:
         logger.error(f"Failed to execute SQLite wal_checkpoint({target_mode}): {e}")
         return False
+    finally:
+        if conn is not None:
+            conn.close()
 
 
 def cleanup_old_backups(backup_dir: str, retention_days: int = 30) -> List[str]:

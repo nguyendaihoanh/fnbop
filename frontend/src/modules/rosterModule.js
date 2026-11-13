@@ -2666,7 +2666,7 @@ export function renderStaffMySchedule(currentWeekDates, filtered, rosterData) {
   if (!scheduleCard || !scheduleList) return;
 
   let pendingBox = document.getElementById('staffPendingPeerSwapsBox');
-  if (!pendingBox) {
+  if (!pendingBox && scheduleList.parentNode && typeof scheduleList.parentNode.insertBefore === 'function') {
     pendingBox = document.createElement('div');
     pendingBox.id = 'staffPendingPeerSwapsBox';
     pendingBox.style.display = 'none';

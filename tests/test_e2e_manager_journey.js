@@ -685,3 +685,4 @@ console.log("   ✓ PHẦN 5 PASSED: Toàn bộ chức năng quản trị bảng
 console.log("\n==================================================================");
 console.log("ALL 5 MANAGER JOURNEY TESTS PASSED 100% — ZERO ERRORS DETECTED!");
 console.log("==================================================================");
+process.exit(0);

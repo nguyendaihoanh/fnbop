@@ -1,0 +1,16 @@
+# Code Ownership & Security Review Boundaries
+# Requires explicit maintainer review when modifying auth, CI/CD, DB schema, or deploy configs.
+
+* @nguyendaihoanh
+
+/.github/ @nguyendaihoanh
+/backend/main.py @nguyendaihoanh
+/backend/services/auth.py @nguyendaihoanh
+/backend/services/db/ @nguyendaihoanh
+/backend/services/payroll_calc.py @nguyendaihoanh
+/Dockerfile @nguyendaihoanh
+/docker-compose*.yml @nguyendaihoanh
+/scripts/audit_schema_contracts.py @nguyendaihoanh
+/scripts/deploy_oracle.sh @nguyendaihoanh
+/pyproject.toml @nguyendaihoanh
+/requirements.txt @nguyendaihoanh

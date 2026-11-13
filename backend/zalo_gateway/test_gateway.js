@@ -177,7 +177,6 @@ async function runTests() {
     assert.ok(rssMb < 120, `RSS exceeded threshold: ${rssMb}MB`);
 
     console.log('🎉 ALL ZALO GATEWAY TESTS PASSED!');
-    process.exit(0);
   } finally {
     server.close();
     // Cleanup test dir
@@ -187,6 +186,7 @@ async function runTests() {
       }
     } catch (e) {}
   }
+  process.exit(0);
 }
 
 runTests().catch(err => {

@@ -39,12 +39,13 @@ services:
 
   backend:
     build:
-      context: ./backend
+      context: .
       dockerfile: Dockerfile
     container_name: cc-standalone-backend
     restart: unless-stopped
     env_file:
-      - .env
+      - path: .env
+        required: false
     environment:
       - ON_PREMISE_MODE=true
       - DATA_DIR=/app/data
@@ -57,13 +58,14 @@ services:
       - ZALO_GATEWAY_URL=http://zalo-gateway:8177
       - PORT=8100
       - HOST=0.0.0.0
+      - ALLOWED_HOSTS=${ALLOWED_HOSTS:-}
+      - EDGE_INGRESS_HOST=${EDGE_INGRESS_HOST:-}
     volumes:
-      - ./backend:/app
       - ./data:/app/data
     expose:
       - "8100"
     healthcheck:
-      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8100/api/v1/main/ping')"]
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8100/health')"]
       interval: 15s
       timeout: 5s
       retries: 3

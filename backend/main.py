@@ -109,14 +109,27 @@ ALLOWED_HOSTS = {
     "host.docker.internal",
     "gateway.docker.internal",
 }
-if os.getenv("ALLOWED_HOSTS"):
-    for h in os.getenv("ALLOWED_HOSTS", "").split(","):
-        if h.strip():
-            ALLOWED_HOSTS.add(h.strip().lower())
+def _add_host_patterns(target: set, raw: Optional[str]) -> None:
+    if not raw:
+        return
+    for item in raw.split(","):
+        cleaned = item.strip().lower()
+        if cleaned:
+            target.add(cleaned)
 
-edge_ingress_host = os.getenv("EDGE_INGRESS_HOST")
-if edge_ingress_host:
-    ALLOWED_HOSTS.add(edge_ingress_host.strip().lower())
+
+def _match_host_pattern(host: str, pattern: str) -> bool:
+    if pattern == host:
+        return True
+    if pattern.startswith("*."):
+        suffix = pattern[2:]
+        if suffix and "." in suffix and not suffix.startswith(".") and not suffix.endswith("."):
+            return not host.startswith(".") and host.endswith(f".{suffix}")
+    return False
+
+
+_add_host_patterns(ALLOWED_HOSTS, os.getenv("ALLOWED_HOSTS"))
+_add_host_patterns(ALLOWED_HOSTS, os.getenv("EDGE_INGRESS_HOST"))
 
 def is_allowed_host(host_header: str) -> bool:
     """Validate HTTP Host header to prevent DNS Rebinding and Localhost Pivoting attacks."""
@@ -124,15 +137,18 @@ def is_allowed_host(host_header: str) -> bool:
         return False
     raw_host = host_header.strip()
     if raw_host.startswith("[") and "]" in raw_host:
-        host = raw_host[1:raw_host.index("]")]
+        host = raw_host[1:raw_host.index("]")].lower()
     else:
         host = raw_host.split(":")[0].strip().lower()
 
-    if host in ALLOWED_HOSTS:
-        return True
+    if not host:
+        return False
 
-    # Cho phép domain VNAIGC (*.vnaigc.com)
-    if host.endswith(".vnaigc.com") or host == "vnaigc.com":
+    configured_hosts = set(ALLOWED_HOSTS)
+    _add_host_patterns(configured_hosts, os.getenv("ALLOWED_HOSTS"))
+    _add_host_patterns(configured_hosts, os.getenv("EDGE_INGRESS_HOST"))
+
+    if any(_match_host_pattern(host, pattern) for pattern in configured_hosts):
         return True
 
     # Cho phép Tailscale MagicDNS (*.ts.net)

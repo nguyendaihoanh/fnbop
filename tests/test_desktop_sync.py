@@ -83,74 +83,81 @@ class TestDesktopSyncAndIntegration(unittest.TestCase):
                       "Staff should have rosterAdminActions hidden, managers/admins should have them displayed")
 
     def test_case_06_live_nginx_proxy_send_payslip_endpoint(self):
-        """Case 6: Verify live Nginx proxy /api/send-payslip responds with HTTP 200"""
-        url = "http://127.0.0.1:8100/api/send-payslip"
+        """Case 6: Verify /api/send-payslip legacy proxy rejects unauthenticated and responds 200 with Admin JWT"""
+        from fastapi.testclient import TestClient
+        from main import app
+        from routers.fnb_ops import create_access_token
+
+        client = TestClient(app)
         payload = {
-            "staffName": "TEST_DESKTOP_VERIFY",
-            "monthTitle": "Tháng 09/2026",
-            "finalPayFormatted": "1.000.000 đ",
-            "totalHours": "50.0",
-            "totalMinsFormatted": "3.000",
-            "shifts": "10",
-            "baseWageFormatted": "20.000 đ/h",
+            "staffName": "Nhân Viên",
+            "monthTitle": "Tháng 10/2026",
+            "finalPayFormatted": "1.800.000 đ",
+            "totalHours": "100.0",
+            "totalMinsFormatted": "6.000",
+            "shifts": "20",
+            "baseWageFormatted": "18.000 đ/h",
             "bonusFormatted": "+0 đ",
-            "violations": []
+            "violations": [],
         }
-        req = urllib.request.Request(
-            url,
-            data=json.dumps(payload).encode("utf-8"),
-            headers={"Content-Type": "application/json"}
+        unauth = client.post("/api/send-payslip", json=payload)
+        self.assertEqual(unauth.status_code, 401, "/api/send-payslip must require authentication")
+
+        token = create_access_token({"sub": "admin", "role": "ADMIN", "name": "Admin"})
+        resp = client.post(
+            "/api/send-payslip",
+            json=payload,
+            headers={"Authorization": f"Bearer {token}"},
         )
-        try:
-            with urllib.request.urlopen(req, timeout=5) as resp:
-                self.assertEqual(resp.status, 200, "Nginx /api/send-payslip proxy should return HTTP 200")
-        except (urllib.error.URLError, OSError, TimeoutError) as e:
-            self.skipTest(f"Server offline or unreachable at {url}: {e}")
+        self.assertEqual(resp.status_code, 200, f"/api/send-payslip failed: {resp.text}")
 
     def test_case_07_live_nginx_proxy_danh_gia_endpoint(self):
-        """Case 7: Verify live Nginx proxy /api/danh-gia responds with HTTP 200"""
-        url = "http://127.0.0.1:8100/api/danh-gia"
+        """Case 7: Verify /api/danh-gia proxy rejects unauthenticated and responds 200 with Admin JWT"""
+        from fastapi.testclient import TestClient
+        from main import app
+        from routers.fnb_ops import create_access_token
+
+        client = TestClient(app)
         payload = {
-            "staffName": "TEST_DESKTOP_STAFF",
-            "date": "12/09/2026",
+            "staffName": "Nhân Viên",
+            "date": "12/10/2026",
             "shift": "Tối",
             "ratings": {"thai_do": 5, "chuyen_mon": 5},
             "red_flags": [],
             "bonus": 0,
             "notes": "Test desktop sync",
-            "manager": "PHAT",
-            "auth_token": "fnbop_secret_key"
+            "manager": "Quản Lý Ca",
         }
-        req = urllib.request.Request(
-            url,
-            data=json.dumps(payload).encode("utf-8"),
-            headers={"Content-Type": "application/json"}
+        unauth = client.post("/api/danh-gia", json=payload)
+        self.assertEqual(unauth.status_code, 401, "/api/danh-gia must require authentication")
+
+        token = create_access_token({"sub": "admin", "role": "ADMIN", "name": "Admin"})
+        resp = client.post(
+            "/api/danh-gia",
+            json=payload,
+            headers={"Authorization": f"Bearer {token}"},
         )
-        try:
-            with urllib.request.urlopen(req, timeout=5) as resp:
-                self.assertEqual(resp.status, 200, "Nginx /api/danh-gia proxy should return HTTP 200")
-        except (urllib.error.URLError, OSError, TimeoutError) as e:
-            self.skipTest(f"Server offline or unreachable at {url}: {e}")
+        self.assertEqual(resp.status_code, 200, f"/api/danh-gia failed: {resp.text}")
+        self.assertTrue(resp.json().get("success"))
 
     def test_case_08_live_backend_roster_week_endpoints(self):
-        """Case 8: Verify live FastAPI backend /api/v1/cc/roster/week returns valid schema for desktop consumption"""
+        """Case 8: Verify /api/v1/cc/roster/week returns valid schema for desktop consumption"""
+        from fastapi.testclient import TestClient
+        from main import app
         from routers.fnb_ops import create_access_token
-        test_token = create_access_token({"sub": "admin", "role": "ADMIN", "name": "Admin"})
-        headers = {"Authorization": f"Bearer {test_token}"}
+
+        client = TestClient(app)
+        token = create_access_token({"sub": "admin", "role": "ADMIN", "name": "Admin"})
+        headers = {"Authorization": f"Bearer {token}"}
         for week_id in ["current", "next"]:
             with self.subTest(week_id=week_id):
-                url = f"http://127.0.0.1:8100/api/v1/cc/roster/week?week_id={week_id}"
-                req = urllib.request.Request(url, headers=headers)
-                try:
-                    with urllib.request.urlopen(req, timeout=5) as resp:
-                        self.assertEqual(resp.status, 200, f"Endpoint for week_id={week_id} should return 200")
-                        data = json.loads(resp.read().decode("utf-8"))
-                        self.assertTrue(data.get("success"), "API should return success: True")
-                        self.assertIn("week", data, "API should return week object")
-                        self.assertIn("status", data["week"], "Week object should contain status")
-                        self.assertIn("shifts", data["week"], "Week object should contain shifts dict")
-                except (urllib.error.URLError, OSError, TimeoutError) as e:
-                    self.skipTest(f"Server offline or unreachable at {url}: {e}")
+                resp = client.get(f"/api/v1/cc/roster/week?week_id={week_id}", headers=headers)
+                self.assertEqual(resp.status_code, 200, f"Endpoint for week_id={week_id} should return 200")
+                data = resp.json()
+                self.assertTrue(data.get("success"), "API should return success: True")
+                self.assertIn("week", data, "API should return week object")
+                self.assertIn("status", data["week"], "Week object should contain status")
+                self.assertIn("shifts", data["week"], "Week object should contain shifts dict")
 
 if __name__ == "__main__":
     unittest.main()

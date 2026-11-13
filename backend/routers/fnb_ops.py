@@ -16,6 +16,7 @@ import logging
 from typing import Optional, Dict, List, Any, Tuple
 import random
 import ipaddress
+import asyncio
 import sys
 
 # Ensure identical module identity across both 'routers.fnb_ops' and 'backend.routers.fnb_ops'
@@ -1466,6 +1467,76 @@ async def trigger_safe_backup(request: Request):
         raise HTTPException(status_code=500, detail=f"Lỗi khi sao lưu: {e}")
 
 
+def _require_admin_user(request: Request, forbidden_detail: str) -> Dict[str, Any]:
+    """Validate Bearer JWT and ensure the caller holds the ADMIN role."""
+    auth_header = request.headers.get("Authorization")
+    if not auth_header or not auth_header.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    token = auth_header.split(" ", 1)[1].strip()
+    if not token:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    user = get_current_user(token)
+    if user.get("role") != "ADMIN":
+        raise HTTPException(status_code=403, detail=forbidden_detail)
+    return user
+
+
+def _build_json_snapshot_sync() -> Dict[str, Any]:
+    from services.db import (
+        list_evaluations,
+        get_daily_closings,
+        list_roster_schedules_db,
+        get_payroll_disbursements_db,
+        list_shift_approvals_db,
+        load_staff_auth_from_sqlite,
+    )
+    from services.attendance_service import load_attendance_logs_from_sqlite
+    from services.store_config import get_store_config
+
+    return {
+        "exported_at": datetime.datetime.now().isoformat(),
+        "staff_auth": load_staff_auth_from_sqlite(),
+        "attendance_logs": load_attendance_logs_from_sqlite(),
+        "roster_schedules": list_roster_schedules_db(),
+        "daily_closings": get_daily_closings(limit=1000),
+        "evaluations": list_evaluations(),
+        "store_config": get_store_config(),
+        "disbursements": get_payroll_disbursements_db(),
+        "shift_approvals": list_shift_approvals_db(),
+    }
+
+
+def _compute_staff_offboarding_sync(staff_name: str, month: Optional[str]) -> Dict[str, Any]:
+    try:
+        from backend.services.payroll_calc import check_staff_offboarding_status
+        from backend.services.storage import safe_json_read
+        from backend.services.auth import load_staff_auth
+        from backend.services.db import list_so_cai_luong
+        from backend.services.store_config import get_store_config
+    except ImportError:
+        from services.payroll_calc import check_staff_offboarding_status
+        from services.storage import safe_json_read
+        from services.auth import load_staff_auth
+        from services.db import list_so_cai_luong
+        from services.store_config import get_store_config
+
+    data_file = get_data_file()
+    data_json = safe_json_read(data_file, default={}) if os.path.exists(data_file) else {}
+    auth_data = load_staff_auth()
+    accounts = auth_data.get("staff_accounts", {})
+    so_cai = list_so_cai_luong(month=month)
+    store_cfg = get_store_config()
+
+    return check_staff_offboarding_status(
+        staff_name=staff_name,
+        target_month=month,
+        data_json=data_json,
+        staff_accounts=accounts,
+        so_cai_luong=so_cai,
+        store_config=store_cfg,
+    )
+
+
 @router.get("/admin/export-json-snapshot")
 async def export_json_snapshot(request: Request):
     """
@@ -1473,38 +1544,10 @@ async def export_json_snapshot(request: Request):
     Trích xuất toàn bộ dữ liệu hiện hành từ SQLite WAL (Single Source of Truth) ra bản chụp JSON theo yêu cầu.
     Chỉ dành riêng cho Chủ quán (Admin).
     """
-    auth_header = request.headers.get("Authorization")
-    if not auth_header or not auth_header.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Unauthorized")
-    token = auth_header.split(" ")[1]
-    user = get_current_user(token)
-    if user.get("role") != "ADMIN":
-        raise HTTPException(status_code=403, detail="Chỉ Chủ quán (Admin) mới có quyền xuất bản chụp dữ liệu.")
+    _require_admin_user(request, "Chỉ Chủ quán (Admin) mới có quyền xuất bản chụp dữ liệu.")
 
     try:
-        from services.db import (
-            list_staff_accounts,
-            list_evaluations,
-            get_daily_closings,
-            list_roster_schedules_db,
-            get_payroll_disbursements_db,
-            list_shift_approvals_db,
-            load_staff_auth_from_sqlite
-        )
-        from services.attendance_service import load_attendance_logs_from_sqlite
-        from services.store_config import get_store_config
-
-        snapshot = {
-            "exported_at": datetime.datetime.now().isoformat(),
-            "staff_auth": load_staff_auth_from_sqlite(),
-            "attendance_logs": load_attendance_logs_from_sqlite(),
-            "roster_schedules": list_roster_schedules_db(),
-            "daily_closings": get_daily_closings(limit=1000),
-            "evaluations": list_evaluations(),
-            "store_config": get_store_config(),
-            "disbursements": get_payroll_disbursements_db(),
-            "shift_approvals": list_shift_approvals_db()
-        }
+        snapshot = await asyncio.to_thread(_build_json_snapshot_sync)
         return {
             "success": True,
             "message": "Trích xuất bản chụp JSON từ SQLite thành công (On-Demand).",
@@ -1529,40 +1572,15 @@ async def get_staff_offboarding_status_endpoint(
     auth_header = request.headers.get("Authorization")
     if not auth_header or not auth_header.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Unauthorized")
-    token = auth_header.split(" ")[1]
+    token = auth_header.split(" ", 1)[1].strip()
+    if not token:
+        raise HTTPException(status_code=401, detail="Unauthorized")
     user = get_current_user(token)
     if user.get("role") not in ("ADMIN", "MANAGER"):
         raise HTTPException(status_code=403, detail="Chỉ Quản lý hoặc Chủ quán mới có quyền kiểm tra quyết toán thôi việc.")
 
     try:
-        try:
-            from backend.services.payroll_calc import check_staff_offboarding_status
-            from backend.services.storage import safe_json_read
-            from backend.services.auth import load_staff_auth
-            from backend.services.db import list_so_cai_luong
-            from backend.services.store_config import get_store_config
-        except ImportError:
-            from services.payroll_calc import check_staff_offboarding_status
-            from services.storage import safe_json_read
-            from services.auth import load_staff_auth
-            from services.db import list_so_cai_luong
-            from services.store_config import get_store_config
-
-        data_file = get_data_file()
-        data_json = safe_json_read(data_file, default={}) if os.path.exists(data_file) else {}
-        auth_data = load_staff_auth()
-        accounts = auth_data.get("staff_accounts", {})
-        so_cai = list_so_cai_luong(month=month)
-        store_cfg = get_store_config()
-
-        status = check_staff_offboarding_status(
-            staff_name=staff_name,
-            target_month=month,
-            data_json=data_json,
-            staff_accounts=accounts,
-            so_cai_luong=so_cai,
-            store_config=store_cfg
-        )
+        status = await asyncio.to_thread(_compute_staff_offboarding_sync, staff_name, month)
         return {"success": True, "data": status}
     except Exception as e:
         logger.exception(f"Lỗi khi kiểm tra offboarding status: {e}")
@@ -1578,11 +1596,12 @@ async def get_system_update_status(request: Request):
     """
     Lấy thông tin phiên bản hiện tại, trạng thái cập nhật và cờ tự động cập nhật.
     """
+    _require_admin_user(request, "Chỉ Chủ quán (Admin) mới có quyền xem trạng thái cập nhật hệ thống.")
     try:
         from backend.services.updater import get_update_config
     except ImportError:
         from services.updater import get_update_config
-    return get_update_config()
+    return await asyncio.to_thread(get_update_config)
 
 
 @router.post("/system/check-update")
@@ -1590,11 +1609,12 @@ async def check_system_update(request: Request):
     """
     Kiểm tra phiên bản mới nhất từ GitHub Releases (hoặc offline cache).
     """
+    _require_admin_user(request, "Chỉ Chủ quán (Admin) mới có quyền kiểm tra phiên bản cập nhật.")
     try:
         from backend.services.updater import check_for_updates
     except ImportError:
         from services.updater import check_for_updates
-    return check_for_updates()
+    return await asyncio.to_thread(check_for_updates)
 
 
 @router.post("/system/apply-update")
@@ -1605,19 +1625,12 @@ async def apply_system_update(request: Request):
     - Kéo mã nguồn mới nhất (git pull --ff-only / update release)
     - Bảo toàn 100% dữ liệu quán trong data/
     """
-    auth_header = request.headers.get("Authorization")
-    if not auth_header or not auth_header.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Unauthorized")
-    token = auth_header.split(" ")[1]
-    user = get_current_user(token)
-    if user.get("role") != "ADMIN":
-        raise HTTPException(status_code=403, detail="Chỉ Chủ quán (Admin) mới có quyền thực thi cập nhật.")
+    _require_admin_user(request, "Chỉ Chủ quán (Admin) mới có quyền thực thi cập nhật.")
 
     try:
         from backend.services.updater import apply_update
     except ImportError:
         from services.updater import apply_update
-    import asyncio
     return await asyncio.to_thread(apply_update)
 
 
@@ -1626,19 +1639,13 @@ async def toggle_auto_update(payload: AutoUpdateTogglePayload, request: Request)
     """
     Bật / Tắt chế độ tự động cập nhật hệ thống (Toggle 'Tự động cập nhật').
     """
-    auth_header = request.headers.get("Authorization")
-    if not auth_header or not auth_header.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Unauthorized")
-    token = auth_header.split(" ")[1]
-    user = get_current_user(token)
-    if user.get("role") != "ADMIN":
-        raise HTTPException(status_code=403, detail="Chỉ Chủ quán (Admin) mới có quyền đổi cài đặt cập nhật.")
+    _require_admin_user(request, "Chỉ Chủ quán (Admin) mới có quyền đổi cài đặt cập nhật.")
 
     try:
         from backend.services.updater import set_auto_update_toggle
     except ImportError:
         from services.updater import set_auto_update_toggle
-    return set_auto_update_toggle(payload.enabled)
+    return await asyncio.to_thread(set_auto_update_toggle, payload.enabled)
 
 
 @router.get("/system/installers-info")

@@ -3,7 +3,7 @@ set -euo pipefail
 
 # ==============================================================================
 # FnBOps Automated Pre-Push Quality Gate
-# Blocks `git push` if contracts, frontend bundles, or full test suite fail.
+# Blocks `git push` if Ruff, contracts, frontend bundles, or full test suite fail.
 # ==============================================================================
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"
@@ -14,13 +14,22 @@ if [ ! -x "$VENV_PYTHON" ]; then
     VENV_PYTHON="$(command -v python3 || command -v python)"
 fi
 
-echo "======================================================================"
-echo "[PRE-PUSH 1/3] Auditing SQLite Schema, OpenAPI Routes & Seed Hygiene..."
-echo "======================================================================"
-PYTHONPATH="$REPO_ROOT:$REPO_ROOT/backend" "$VENV_PYTHON" "$REPO_ROOT/scripts/audit_schema_contracts.py"
+RUFF_BIN="$REPO_ROOT/.venv/bin/ruff"
+if [ ! -x "$RUFF_BIN" ]; then
+    RUFF_BIN="$(command -v ruff || true)"
+fi
 
 echo "======================================================================"
-echo "[PRE-PUSH 2/3] Verifying Frontend Syntax, Production Bundle & JS Tests..."
+echo "[PRE-PUSH 1/4] Running Ruff Lint & Auditing Contracts..."
+echo "======================================================================"
+if [ -n "$RUFF_BIN" ] && [ -x "$RUFF_BIN" ]; then
+    "$RUFF_BIN" check "$REPO_ROOT/backend" "$REPO_ROOT/tests" "$REPO_ROOT/scripts"
+fi
+PYTHONPATH="$REPO_ROOT:$REPO_ROOT/backend" "$VENV_PYTHON" "$REPO_ROOT/scripts/audit_schema_contracts.py"
+bash -n "$REPO_ROOT/run_mac.command" "$REPO_ROOT/scripts/quality_gate.sh" "$REPO_ROOT/scripts/install_git_hooks.sh" "$REPO_ROOT/scripts/deploy_oracle.sh" "$REPO_ROOT/.githooks/pre-push"
+
+echo "======================================================================"
+echo "[PRE-PUSH 2/4] Verifying Frontend Syntax, Production Bundle & 11 JS Suites..."
 echo "======================================================================"
 if command -v node >/dev/null 2>&1; then
     node -c "$REPO_ROOT/frontend/mobile.js"
@@ -34,22 +43,22 @@ if command -v node >/dev/null 2>&1; then
         exit 1
     fi
 
-    for js_test in \
-        tests/test_css_hygiene.js \
-        tests/test_e2e_auth_gate.js \
-        tests/test_frontend_identity_matching.js \
-        tests/test_manager_safeguards_eval.js \
-        tests/test_press_hold_checkout.js \
-        tests/test_responsive_desktop_mode.js \
-        tests/test_roster_teammates_swap.js \
-        tests/test_thermal_receipt_and_swipe_gestures.js; do
-        node "$REPO_ROOT/$js_test" >/dev/null
+    JS_COUNT=0
+    for js_test in "$REPO_ROOT"/tests/test_*.js; do
+        node "$js_test" >/dev/null
+        JS_COUNT=$((JS_COUNT + 1))
     done
-    echo "Frontend syntax, bundle sync & 8 JS unit suites passed."
+
+    if [ -d "$REPO_ROOT/backend/zalo_gateway/node_modules" ]; then
+        node "$REPO_ROOT/backend/zalo_gateway/test_gateway.js" >/dev/null
+        echo "Frontend syntax, bundle sync, ${JS_COUNT} JS suites & Zalo gateway suite passed."
+    else
+        echo "Frontend syntax, bundle sync & ${JS_COUNT} JS suites passed (gateway deps not installed locally)."
+    fi
 fi
 
 echo "======================================================================"
-echo "[PRE-PUSH 3/3] Running Full Sandboxed Pytest Suite..."
+echo "[PRE-PUSH 3/4] Running Full Sandboxed Pytest Suite..."
 echo "======================================================================"
 TESTING=1 \
 MOCK_TELEGRAM=1 \
@@ -58,6 +67,15 @@ JWT_SECRET_KEY="prepush_ephemeral_test_jwt_secret_key_32_characters_long" \
 POS_SECRET="prepush_ephemeral_test_pos_secret_key_32_characters_long" \
 PYTHONPATH="$REPO_ROOT:$REPO_ROOT/backend" \
 "$VENV_PYTHON" -m pytest "$REPO_ROOT/tests/" -q --ignore="$REPO_ROOT/tests/test_live_system_readiness.py"
+
+echo "======================================================================"
+echo "[PRE-PUSH 4/4] Verifying Zero Mutation to Tracked Seed Data..."
+echo "======================================================================"
+if [ -n "$(git status --porcelain "$REPO_ROOT/data/")" ]; then
+    echo "[BLOCKED] Tests mutated tracked files inside data/!"
+    git status --short "$REPO_ROOT/data/"
+    exit 1
+fi
 
 echo "======================================================================"
 echo "[PRE-PUSH PASS] All gates green — safe to push."

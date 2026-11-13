@@ -1,0 +1,95 @@
+# Manual Oracle VPS Production Deployment Workflow
+# Triggers explicitly via workflow_dispatch (with optional rollback / dry-run flags)
+name: Deploy to Oracle VPS
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: "Git branch to deploy"
+        required: true
+        default: "main"
+        type: string
+      dry_run:
+        description: "Validate .env and print deploy plan without restarting containers"
+        required: false
+        default: false
+        type: boolean
+      rollback:
+        description: "Roll back Oracle VPS to previous .deploy_prev_commit"
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-oracle-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: SSH Deploy via Fail-Closed Script
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          egress-policy: audit
+
+      - name: Deploy on Oracle VPS
+        env:
+          ORACLE_SSH_HOST: ${{ secrets.ORACLE_SSH_HOST }}
+          ORACLE_SSH_USER: ${{ secrets.ORACLE_SSH_USER }}
+          ORACLE_SSH_KEY: ${{ secrets.ORACLE_SSH_KEY }}
+          ORACLE_SSH_PORT: ${{ secrets.ORACLE_SSH_PORT || '22' }}
+          ORACLE_SSH_KNOWN_HOSTS: ${{ secrets.ORACLE_SSH_KNOWN_HOSTS }}
+          ORACLE_DEPLOY_DIR: ${{ vars.ORACLE_DEPLOY_DIR || '/home/ubuntu/fnbop' }}
+          INPUT_BRANCH: ${{ inputs.branch }}
+          INPUT_DRY_RUN: ${{ inputs.dry_run }}
+          INPUT_ROLLBACK: ${{ inputs.rollback }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${ORACLE_SSH_HOST:-}" ] || [ -z "${ORACLE_SSH_USER:-}" ] || [ -z "${ORACLE_SSH_KEY:-}" ]; then
+            echo "ERROR: Missing required GitHub Secrets (ORACLE_SSH_HOST, ORACLE_SSH_USER, ORACLE_SSH_KEY)." >&2
+            exit 1
+          fi
+
+          if ! [[ "$INPUT_BRANCH" =~ ^[A-Za-z0-9._/-]+$ ]]; then
+            echo "ERROR: Invalid branch name format." >&2
+            exit 1
+          fi
+
+          SSH_DIR="$(mktemp -d)"
+          trap 'rm -rf "$SSH_DIR"' EXIT
+          KEY_PATH="${SSH_DIR}/id_deploy"
+          KNOWN_HOSTS_PATH="${SSH_DIR}/known_hosts"
+
+          printf '%s\n' "$ORACLE_SSH_KEY" > "$KEY_PATH"
+          chmod 600 "$KEY_PATH"
+
+          if [ -n "${ORACLE_SSH_KNOWN_HOSTS:-}" ]; then
+            printf '%s\n' "$ORACLE_SSH_KNOWN_HOSTS" > "$KNOWN_HOSTS_PATH"
+            chmod 600 "$KNOWN_HOSTS_PATH"
+            HOST_KEY_OPT=(-o "StrictHostKeyChecking=yes" -o "UserKnownHostsFile=${KNOWN_HOSTS_PATH}")
+          else
+            echo "WARN: ORACLE_SSH_KNOWN_HOSTS secret not set; falling back to accept-new."
+            HOST_KEY_OPT=(-o "StrictHostKeyChecking=accept-new")
+          fi
+
+          FLAGS="--branch ${INPUT_BRANCH}"
+          if [ "$INPUT_DRY_RUN" = "true" ]; then
+            FLAGS="$FLAGS --dry-run"
+          fi
+          if [ "$INPUT_ROLLBACK" = "true" ]; then
+            FLAGS="$FLAGS --rollback"
+          fi
+
+          ssh -i "$KEY_PATH" -p "$ORACLE_SSH_PORT" \
+            -o BatchMode=yes -o ConnectTimeout=15 "${HOST_KEY_OPT[@]}" \
+            "${ORACLE_SSH_USER}@${ORACLE_SSH_HOST}" \
+            "DEPLOY_DIR='${ORACLE_DEPLOY_DIR}' bash '${ORACLE_DEPLOY_DIR}/scripts/deploy_oracle.sh' ${FLAGS}"

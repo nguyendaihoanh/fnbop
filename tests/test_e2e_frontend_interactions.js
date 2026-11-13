@@ -215,10 +215,10 @@ tabKeys.forEach(t => {
 });
 
 const storage = new Map();
-storage.set("fnbops_jwt", "mock_jwt_admin");
-storage.set("fnbops_role", "ADMIN");
-storage.set("fnbops_username", "admin");
-storage.set("fnbops_name", "Chủ Quán");
+storage.set("vnaigc_jwt", "mock_jwt_admin");
+storage.set("vnaigc_role", "ADMIN");
+storage.set("vnaigc_username", "admin");
+storage.set("vnaigc_name", "Chủ Quán");
 
 global.localStorage = {
   getItem: (k) => storage.get(k) || null,
@@ -287,6 +287,9 @@ console.log("=================================================================="
   const rawData = JSON.parse(fs.readFileSync("data/data.json", "utf8"));
   state.rawData = rawData;
   processData();
+  if (state.monthsAvailable.length > 0 && (!state.records.some(r => r.month === state.currentMonth))) {
+    state.currentMonth = state.monthsAvailable[0];
+  }
 
   console.log(`✓ Data loaded: ${state.records.length} attendance records, ${Object.keys(state.employeesMap).length} employees.`);
   console.log(`✓ Current Month: ${state.currentMonth}, Months available: ${state.monthsAvailable.join(", ")}`);
@@ -328,7 +331,7 @@ console.log("=================================================================="
   assert.strictEqual(state.currentRoleFilter, "Quản lý", "state.currentRoleFilter must be 'Quản lý'");
   const mgrCount = slipContainer.children.length;
   console.log(`   - "Quản lý" filtered count: ${mgrCount}`);
-  assert.strictEqual(mgrCount, 1, "Only PHÁT is Quản lý");
+  assert.strictEqual(mgrCount, 1, "Only QUẢN LÝ CA is Quản lý");
 
   // Reset to "ALL"
   await domElements.get("pill_ALL").click();
@@ -337,11 +340,11 @@ console.log("=================================================================="
 
   // TEST 2: Open Payslip Modal, Verify Breakdown & Telegram Button
   console.log("\n[TEST 2] Payslip Detail Modal & Action Buttons:");
-  await openPayslipModal("PHÁT");
+  await openPayslipModal("QUẢN LÝ CA");
   const payslipSheet = domElements.get("payslipSheet");
   assert(payslipSheet.classList.contains("active"), "payslipSheet must have .active");
   assert(state.currentViewingStaff !== null, "state.currentViewingStaff must be populated");
-  assert.strictEqual(state.currentViewingStaff.name, "PHÁT");
+  assert.strictEqual(state.currentViewingStaff.name, "QUẢN LÝ CA");
   console.log(`   - Opened payslip modal for: ${state.currentViewingStaff.name}, netPay: ${state.currentViewingStaff.bankTransferAfterPenalty}`);
 
   // Test Telegram button click
@@ -365,7 +368,7 @@ console.log("=================================================================="
 
   const staffSelect = domElements.get("evalStaffSelect");
   assert(staffSelect.children.length > 0, "evalStaffSelect must be populated with active staff");
-  staffSelect.value = "THUẬN";
+  staffSelect.value = "NHÂN VIÊN";
   console.log(`   - Opened evalSheet. Selected staff: ${staffSelect.value}`);
 
   // Click 1-Tap: Trễ Ca > 15p
@@ -374,12 +377,12 @@ console.log("=================================================================="
   const btnCustomSubmitInit = domElements.get("btnSubmitCustomEval");
   await btnCustomSubmitInit.click();
   assert(!evalSheet.classList.contains("active"), "evalSheet should close after 1-tap submission");
-  assert(state.deductionLedger[state.currentMonth]["THUẬN"].length > 0, "Deduction ledger for THUẬN should have recorded entry");
-  console.log(`   - 1-Tap 'Trễ Ca > 15p' submitted. Deduction ledger: ${JSON.stringify(state.deductionLedger[state.currentMonth]["THUẬN"][0])}`);
+  assert(state.deductionLedger[state.currentMonth]["NHÂN VIÊN"].length > 0, "Deduction ledger for NHÂN VIÊN should have recorded entry");
+  console.log(`   - 1-Tap 'Trễ Ca > 15p' submitted. Deduction ledger: ${JSON.stringify(state.deductionLedger[state.currentMonth]["NHÂN VIÊN"][0])}`);
 
   // Re-open evalSheet for Custom submission
   await btnOpenEval.click();
-  staffSelect.value = "NHANVIEN01";
+  staffSelect.value = "PHA CHẾ";
   domElements.get("evalTypeSelect").value = "Thưởng";
   domElements.get("evalAmountInput").value = "50000";
   domElements.get("evalNotesInput").value = "Pha chế xuất sắc giờ cao điểm";
@@ -387,8 +390,8 @@ console.log("=================================================================="
   const btnCustomSubmit = domElements.get("btnSubmitCustomEval");
   await btnCustomSubmit.click();
   assert(!evalSheet.classList.contains("active"), "evalSheet should close after custom submission");
-  assert(state.bonusLedger[state.currentMonth]["NHANVIEN01"].length > 0, "Bonus ledger for NHANVIEN01 should have recorded entry");
-  console.log(`   - Custom Bonus submitted. Bonus ledger: ${JSON.stringify(state.bonusLedger[state.currentMonth]["NHANVIEN01"][0])}`);
+  assert(state.bonusLedger[state.currentMonth]["PHA CHẾ"].length > 0, "Bonus ledger for PHA CHẾ should have recorded entry");
+  console.log(`   - Custom Bonus submitted. Bonus ledger: ${JSON.stringify(state.bonusLedger[state.currentMonth]["PHA CHẾ"][0])}`);
   console.log("   ✓ TEST 3 PASSED: 1-Tap & Custom evaluation forms submit cleanly, update ledger, refresh views.");
 
   // TEST 4: Tab Switching Navigation Across All 4 Views
@@ -403,7 +406,7 @@ console.log("=================================================================="
 
   // TEST 5: Detailed Shifts Modal (staffShiftsSheet)
   console.log("\n[TEST 5] Staff Shifts Detail Modal (staffShiftsSheet):");
-  openStaffShiftsDetailModal("PHÁT");
+  openStaffShiftsDetailModal("QUẢN LÝ CA");
   const shiftsModal = domElements.get("staffShiftsSheet");
   assert(shiftsModal.classList.contains("active"), "staffShiftsSheet must be active");
   const summaryBox = domElements.get("shiftsModalSummary");

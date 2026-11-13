@@ -321,12 +321,16 @@ global.document = {
 
 // Mock LocalStorage
 const storage = new Map();
+storage.set("vnaigc_jwt", "mock_jwt_staff_nhanvien");
+storage.set("vnaigc_role", "STAFF");
+storage.set("vnaigc_username", "nhanvien");
+storage.set("vnaigc_name", "Nhân Viên");
+storage.set("vnaigc_position", "Phục vụ");
+storage.set("vnaigc_store_name", "WFM Store");
 storage.set("fnbops_jwt", "mock_jwt_staff_nhanvien");
 storage.set("fnbops_role", "STAFF");
 storage.set("fnbops_username", "nhanvien");
 storage.set("fnbops_name", "Nhân Viên");
-storage.set("fnbops_position", "Phục vụ");
-storage.set("fnbops_store_name", "WFM Store");
 
 global.localStorage = {
   getItem: (k) => storage.get(k) || null,
@@ -674,6 +678,14 @@ console.log("=================================================================="
 
   // Load Real Raw Data
   const rawData = JSON.parse(fs.readFileSync("data/data.json", "utf8"));
+  rawData._meta = {
+    username: "nhanvien",
+    full_name: "Nhân Viên",
+    sheet_names: ["NHANVIEN", "Nhân Viên"],
+    staff_directory: staffDirectoryMock,
+    payroll_locks: {},
+    confirmations: {},
+  };
   state.rawData = rawData;
   processData();
   state.currentMonth = "10";

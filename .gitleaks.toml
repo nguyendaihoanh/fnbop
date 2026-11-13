@@ -1,0 +1,40 @@
+title = "FnBOps OSS Gitleaks Config"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "telegram-bot-token"
+description = "Telegram Bot Token"
+regex = '''(?:^|[^0-9])([0-9]{8,10}:AA[A-Za-z0-9_-]{25,})'''
+secretGroup = 1
+keywords = [":aa"]
+
+[[rules]]
+id = "ninerouter-sk-key"
+description = "9Router API Key"
+regex = '''\bsk-9router-[A-Za-z0-9_-]{12,}'''
+
+[[rules]]
+id = "brave-search-api-key"
+description = "Brave Search API Key"
+regex = '''\bBSA[A-Za-z0-9_-]{18,}'''
+
+[allowlist]
+description = "Allow lockfiles, bundled offline icons, redacted placeholders, explicit mock/test/CI secret strings, and pinned checksums"
+paths = [
+  '''package-lock\.json$''',
+  '''Cargo\.lock$''',
+  '''pnpm-lock\.yaml$''',
+  '''yarn\.lock$''',
+  '''^frontend/vendor/''',
+]
+regexes = [
+  '''<REDACTED_[A-Z0-9_]+>''',
+  '''[0-9]{8,10}:AA_(?:MOCK|REDACTED)_[A-Z0-9_]+''',
+  '''test_(?:jwt_)?secret_key_[A-Za-z0-9_]+''',
+  '''ci_(?:test|compose|docker_smoke)_[A-Za-z0-9_]+''',
+  '''prepush_ephemeral_test_[A-Za-z0-9_]+''',
+  '''verify_(?:docker_runtime|pytest|compose)_[A-Za-z0-9_]+''',
+  '''551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb''',
+]

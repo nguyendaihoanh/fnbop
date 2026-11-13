@@ -251,7 +251,7 @@ async def api_send_eval_email(payload: SendEvalEmailRequest, request: Request):
                 from backend.routers.fnb_ops import load_evaluations
             except ImportError:
                 from routers.fnb_ops import load_evaluations
-            evals = load_evaluations()
+            evals = await asyncio.to_thread(load_evaluations)
             for ev in evals:
                 if str(ev.get("id")) == str(payload.eval_id):
                     eval_data = dict(ev)

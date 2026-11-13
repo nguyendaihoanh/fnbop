@@ -58,8 +58,33 @@ def audit_sql_columns(db_path: str) -> int:
     if not tables:
         issues.append(("schema.py", "ALL", "0 tables", "Canonical SQLite schema failed to initialize"))
 
-    update_pat = re.compile(r"UPDATE\s+([a-zA-Z0-9_]+)\s+SET\s+([^WHERE;\n]+)", re.IGNORECASE)
+    update_pat = re.compile(
+        r"UPDATE\s+([a-zA-Z0-9_]+)\s+SET\s+(.*?)(?=\bWHERE\b|\bRETURNING\b|;|\"\"\"|\'\'\'|\Z)",
+        re.IGNORECASE | re.DOTALL,
+    )
     insert_pat = re.compile(r"INSERT\s+(?:OR\s+\w+\s+)?INTO\s+([a-zA-Z0-9_]+)\s*\(([^)]+)\)", re.IGNORECASE)
+
+    def _split_top_level_commas(expr: str) -> list[str]:
+        parts = []
+        depth = 0
+        in_single = False
+        cur = []
+        for ch in expr:
+            if ch == "'" and (not cur or cur[-1] != "\\"):
+                in_single = not in_single
+            elif not in_single:
+                if ch == "(":
+                    depth += 1
+                elif ch == ")" and depth > 0:
+                    depth -= 1
+                elif ch == "," and depth == 0:
+                    parts.append("".join(cur).strip())
+                    cur = []
+                    continue
+            cur.append(ch)
+        if cur:
+            parts.append("".join(cur).strip())
+        return parts
 
     for root, dirs, files in os.walk(BACKEND_DIR):
         dirs[:] = [d for d in dirs if d not in ("node_modules", "__pycache__", ".venv")]
@@ -73,11 +98,10 @@ def audit_sql_columns(db_path: str) -> int:
                         set_clause = m.group(2)
                         if tbl in table_columns:
                             valid_cols = table_columns[tbl]
-                            assignments = [a.strip() for a in set_clause.split(",")]
-                            for assign in assignments:
+                            for assign in _split_top_level_commas(set_clause):
                                 if "=" in assign:
-                                    col = assign.split("=")[0].strip().strip("`\"' ")
-                                    if col and col not in valid_cols and not col.startswith(":"):
+                                    col = assign.split("=")[0].strip().strip("`\"' \n\t")
+                                    if col and re.match(r"^[a-zA-Z_][a-zA-Z0-9_]*$", col) and col not in valid_cols:
                                         issues.append((filepath, tbl, col, "Invalid column in UPDATE SET"))
 
                     for m in insert_pat.finditer(content):

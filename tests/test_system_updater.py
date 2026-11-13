@@ -175,8 +175,14 @@ def test_api_system_update_endpoints_security():
     admin_headers = {"Authorization": f"Bearer {admin_token}"}
     staff_headers = {"Authorization": f"Bearer {staff_token}"}
 
-    # 1. GET /api/v1/cc/system/update-status
-    res = client.get("/api/v1/cc/system/update-status")
+    # 1. GET /api/v1/cc/system/update-status (requires ADMIN auth)
+    res_unauth = client.get("/api/v1/cc/system/update-status")
+    assert res_unauth.status_code == 401
+
+    res_staff = client.get("/api/v1/cc/system/update-status", headers=staff_headers)
+    assert res_staff.status_code == 403
+
+    res = client.get("/api/v1/cc/system/update-status", headers=admin_headers)
     assert res.status_code == 200
     st_data = res.json()
     assert "auto_update" in st_data
@@ -196,7 +202,13 @@ def test_api_system_update_endpoints_security():
     assert r_admin.status_code == 200
     assert r_admin.json().get("auto_update") is True
 
-    # 3. POST /api/v1/cc/system/check-update
+    # 3. POST /api/v1/cc/system/check-update (requires ADMIN auth)
+    r_check_unauth = client.post("/api/v1/cc/system/check-update")
+    assert r_check_unauth.status_code == 401
+
+    r_check_staff = client.post("/api/v1/cc/system/check-update", headers=staff_headers)
+    assert r_check_staff.status_code == 403
+
     with patch("backend.services.updater.check_for_updates", return_value={
         "current_version": "1.0.0",
         "latest_version": "1.1.0",
@@ -205,7 +217,7 @@ def test_api_system_update_endpoints_security():
         "release_url": "https://github.com/...",
         "last_checked": "2026-10-18T10:00:00"
     }):
-        r_check = client.post("/api/v1/cc/system/check-update")
+        r_check = client.post("/api/v1/cc/system/check-update", headers=admin_headers)
         assert r_check.status_code == 200
         assert r_check.json().get("update_available") is True
 
@@ -222,7 +234,9 @@ def test_api_system_update_endpoints_security():
         assert r_apply_admin.json().get("success") is True
 
     # 5. Verify root aliases (/system/*)
-    res_root_status = client.get("/system/update-status")
+    assert client.get("/system/update-status").status_code == 401
+    assert client.get("/system/update-status", headers=staff_headers).status_code == 403
+    res_root_status = client.get("/system/update-status", headers=admin_headers)
     assert res_root_status.status_code == 200
     assert "current_version" in res_root_status.json()
 

@@ -1,3 +1,5 @@
+# CI / Hardened Supply-Chain & Automated Quality Pipeline
+# Modeled after fastapi/full-stack-fastapi-template & ossf/scorecard
 name: CI / Automated Quality Pipeline
 
 on:
@@ -10,21 +12,36 @@ on:
       - main
       - develop
 
+permissions:
+  contents: read
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  contract-and-bootstrap:
-    name: Schema, Contracts & Cold-Start Bootstrap
+  lint-and-contracts:
+    name: Ruff, Schema Contracts & Cold-Start Bootstrap
     runs-on: ubuntu-latest
 
     steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          egress-policy: audit
+
       - name: Checkout Source Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Run Ruff Static Linter
+        uses: astral-sh/ruff-action@278981a28ce3188b1e39527901f38254bf3aac89 # v4.1.0
+        with:
+          args: check backend tests scripts
 
       - name: Set up Python 3.11
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "3.11"
           cache: "pip"
@@ -32,7 +49,7 @@ jobs:
       - name: Install System & Python Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libgl1 libglib2.0-0
+          sudo apt-get install -y --no-install-recommends libgl1 libglib2.0-0
           python -m pip install --upgrade pip setuptools wheel
           pip install -r requirements.txt
 
@@ -42,13 +59,19 @@ jobs:
         run: |
           python scripts/audit_schema_contracts.py
 
-      - name: Validate Shell Scripts & Docker Compose Config
+      - name: Validate Shell Scripts & Docker Compose Configs
         run: |
           bash -n run_mac.command
           bash -n scripts/quality_gate.sh
           bash -n scripts/install_git_hooks.sh
+          bash -n scripts/deploy_oracle.sh
           bash -n .githooks/pre-push
-          JWT_SECRET_KEY=ci_compose_test_secret_32_characters_long POS_SECRET=ci_compose_pos_secret docker compose config -q
+          JWT_SECRET_KEY=ci_compose_test_secret_32_characters_long \
+            POS_SECRET=ci_compose_pos_secret \
+            docker compose config -q
+          JWT_SECRET_KEY=ci_compose_test_secret_32_characters_long \
+            POS_SECRET=ci_compose_pos_secret \
+            docker compose -f docker-compose.standalone.yml config -q
 
       - name: Cold-Start Zero-Config .env Bootstrap & Fail-Closed Smoke Test
         run: |
@@ -95,20 +118,27 @@ jobs:
           rm -rf "$COLD_DIR"
 
   test-backend:
-    name: Backend Tests (Python ${{ matrix.python-version }})
+    name: Backend Tests & Coverage (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
-    needs: contract-and-bootstrap
+    needs: lint-and-contracts
     strategy:
       fail-fast: false
       matrix:
         python-version: ["3.11", "3.12", "3.13"]
 
     steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          egress-policy: audit
+
       - name: Checkout Source Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: ${{ matrix.python-version }}
           cache: "pip"
@@ -116,15 +146,15 @@ jobs:
       - name: Install System Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libgl1 libglib2.0-0
+          sudo apt-get install -y --no-install-recommends libgl1 libglib2.0-0
 
       - name: Install Python Dependencies
         run: |
           python -m pip install --upgrade pip setuptools wheel
           pip install -r requirements.txt
-          pip install pytest pytest-subtests
+          pip install pytest pytest-cov pytest-subtests
 
-      - name: Run Backend Test Suite
+      - name: Run Backend Test Suite with Coverage
         env:
           TESTING: "1"
           MOCK_TELEGRAM: "1"
@@ -133,7 +163,7 @@ jobs:
           PYTHONPATH: .:backend
           ON_PREMISE_MODE: "true"
         run: |
-          pytest tests/ -v --ignore=tests/test_live_system_readiness.py
+          pytest tests/ -v --ignore=tests/test_live_system_readiness.py --cov=backend --cov-report=term-missing
 
       - name: Verify Zero Mutation to Tracked Seed Data
         run: |
@@ -146,24 +176,33 @@ jobs:
           echo "Verified: 0 tracked files in data/ mutated during test execution."
 
   build-frontend:
-    name: Frontend Build, Bundle Sync & JS Unit Tests
+    name: Frontend Build, Bundle Sync & Full JS/Gateway Tests
     runs-on: ubuntu-latest
 
     steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          egress-policy: audit
+
       - name: Checkout Source Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Set up Node.js 20.x
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: 20
+          node-version: "20"
           cache: "npm"
-          cache-dependency-path: frontend/package-lock.json
+          cache-dependency-path: |
+            frontend/package-lock.json
+            backend/zalo_gateway/package-lock.json
 
-      - name: Install Frontend Dependencies (Strict Lockfile)
-        working-directory: frontend
+      - name: Install Frontend & Gateway Dependencies (Strict Lockfile)
         run: |
-          npm ci
+          npm --prefix frontend ci
+          npm --prefix backend/zalo_gateway ci
 
       - name: Verify JS Entrypoint Syntax & Build Production Bundles
         run: |
@@ -183,31 +222,122 @@ jobs:
           fi
           echo "Verified: Committed frontend/dist/ bundles match source 100%."
 
-      - name: Run Frontend Unit, DOM & CSS Hygiene Suites
+      - name: Run All 11 Frontend & E2E Journey JS Suites
         run: |
-          for js_test in \
-            tests/test_css_hygiene.js \
-            tests/test_e2e_auth_gate.js \
-            tests/test_frontend_identity_matching.js \
-            tests/test_manager_safeguards_eval.js \
-            tests/test_press_hold_checkout.js \
-            tests/test_responsive_desktop_mode.js \
-            tests/test_roster_teammates_swap.js \
-            tests/test_thermal_receipt_and_swipe_gestures.js; do
+          for js_test in tests/test_*.js; do
             echo "Running $js_test..."
             node "$js_test"
           done
 
+      - name: Run Zalo Gateway Microservice Tests
+        run: |
+          node backend/zalo_gateway/test_gateway.js
+
+  docker-smoke-and-trivy:
+    name: Docker Build, Live /health Smoke & Trivy Image Scan
+    runs-on: ubuntu-latest
+    needs: [lint-and-contracts, build-frontend]
+
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          egress-policy: audit
+
+      - name: Checkout Source Code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - name: Build Production Docker Image
+        run: |
+          docker build -t fnbop:ci-${{ github.sha }} .
+
+      - name: Container Runtime Smoke Test (/health & DNS Rebinding Guard)
+        run: |
+          cleanup() {
+            docker rm -f fnbop-ci-smoke >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+
+          docker run -d \
+            --name fnbop-ci-smoke \
+            -p 18100:8100 \
+            -e TESTING=1 \
+            -e MOCK_TELEGRAM=1 \
+            -e ON_PREMISE_MODE=true \
+            -e ALLOWED_HOSTS=localhost,127.0.0.1,fnb.example.com \
+            -e JWT_SECRET_KEY=ci_docker_smoke_jwt_secret_key_32_characters_long \
+            -e POS_SECRET=ci_docker_smoke_pos_secret_key_32_characters \
+            fnbop:ci-${{ github.sha }}
+
+          HEALTH_OK=0
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:18100/health | grep -q '"status":"ok"'; then
+              HEALTH_OK=1
+              break
+            fi
+            sleep 1
+          done
+
+          if [ "$HEALTH_OK" -ne 1 ]; then
+            echo "ERROR: Container failed /health smoke check!"
+            docker logs fnbop-ci-smoke
+            exit 1
+          fi
+
+          # Verify frontend index serves HTTP 200 and evil Host header fails closed (400)
+          curl -fsS -o /dev/null http://127.0.0.1:18100/
+          REBIND_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -H "Host: evil.attacker.example" http://127.0.0.1:18100/health)
+          if [ "$REBIND_STATUS" != "400" ]; then
+            echo "ERROR: Expected HTTP 400 for evil Host header, got $REBIND_STATUS"
+            exit 1
+          fi
+          echo "Container runtime smoke test & DNS rebinding shield passed."
+
+      - name: Trivy Container Image Vulnerability Scan
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: "image"
+          image-ref: "fnbop:ci-${{ github.sha }}"
+          format: "table"
+          exit-code: "1"
+          ignore-unfixed: true
+          vuln-type: "os,library"
+          severity: "CRITICAL,HIGH"
+
   security-audit:
-    name: Security & Vulnerability Audit
+    name: Bandit, pip-audit, Gitleaks & Trivy Security Scan
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Source Code
-        uses: actions/checkout@v4
+      - name: Harden Runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          egress-policy: audit
+
+      - name: Checkout Source Code (Full History)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Install & Run SHA-256 Pinned Gitleaks v8.30.1 (Full History)
+        run: |
+          GITLEAKS_VER="8.30.1"
+          GITLEAKS_TAR="gitleaks_${GITLEAKS_VER}_linux_x64.tar.gz"
+          GITLEAKS_SHA256="551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb"
+          curl -fsSL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VER}/${GITLEAKS_TAR}" -o "/tmp/${GITLEAKS_TAR}"
+          echo "${GITLEAKS_SHA256}  /tmp/${GITLEAKS_TAR}" | sha256sum -c -
+          tar -xzf "/tmp/${GITLEAKS_TAR}" -C /usr/local/bin gitleaks
+          rm -f "/tmp/${GITLEAKS_TAR}"
+          gitleaks git --config .gitleaks.toml --verbose --redact --no-banner
 
       - name: Set up Python 3.11
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "3.11"
           cache: "pip"
@@ -224,6 +354,18 @@ jobs:
       - name: Dependency Vulnerability Audit with pip-audit (Fail on Known CVEs)
         run: |
           pip-audit -r requirements.txt
+
+      - name: Trivy Filesystem Scan (Vuln, Misconfig, Secret)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: "fs"
+          scan-ref: "."
+          scanners: "vuln,misconfig,secret"
+          skip-dirs: "node_modules,frontend/node_modules,backend/zalo_gateway/node_modules,.venv"
+          format: "table"
+          exit-code: "1"
+          ignore-unfixed: true
+          severity: "CRITICAL,HIGH"
 
       - name: Secret & Credential Leak Guard
         run: |

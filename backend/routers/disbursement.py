@@ -22,6 +22,7 @@ import os
 import sys
 import time
 import json
+import html
 import random
 import logging
 import datetime
@@ -384,13 +385,17 @@ def confirm_payroll(request: Request, data: ConfirmPayrollData):
     if st == "DISPUTED":
         try:
             if os.getenv("TESTING") != "1" and os.getenv("MOCK_TELEGRAM") != "1":
-                tele_token = os.getenv("TEST_TELEGRAM_BOT_TOKEN") or os.getenv("TELEGRAM_BOT_TOKEN")
-                chat_id = os.getenv("TELEGRAM_CHAT_ID")
-                if tele_token and chat_id:
-                    staff_full = accounts[uname].get("full_name") or uname
-                    tele_msg = f"⚠️ [KHIẾU NẠI CÔNG] Nhân viên {staff_full} ({uname}) vừa báo sai lệch công Tháng {m}!\n📝 Ghi chú: \"{data.note.strip()}\""
-                    tele_url = f"https://api.telegram.org/bot{tele_token}/sendMessage?chat_id={chat_id}&text={urllib.parse.quote(tele_msg)}"
-                    urllib.request.urlopen(tele_url, timeout=3)
+                try:
+                    from backend.services.send_telegram import send_telegram_alert_async
+                except ImportError:
+                    from services.send_telegram import send_telegram_alert_async
+                staff_full = accounts[uname].get("full_name") or uname
+                tele_msg = (
+                    f"⚠️ [KHIẾU NẠI CÔNG] Nhân viên {html.escape(str(staff_full))} "
+                    f"({html.escape(str(uname))}) vừa báo sai lệch công Tháng {m}!\n"
+                    f"📝 Ghi chú: \"{html.escape(data.note.strip())}\""
+                )
+                send_telegram_alert_async(tele_msg, channel="prod")
         except Exception as ex:
             logger.warning(f"Failed to send Telegram alert for dispute from {uname}: {ex}")
 

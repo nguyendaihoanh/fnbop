@@ -39,19 +39,21 @@ def upsert_roster_schedule_db(
     now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     conn = get_db_connection(db_path)
-    _ensure_v2_operational_tables(conn)
-    with conn:
-        conn.execute("""
-            INSERT INTO roster_schedules (
-                week_key, tenant_id, status, schedule_json, registrations_json, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?)
-            ON CONFLICT(week_key, tenant_id) DO UPDATE SET
-                status = excluded.status,
-                schedule_json = excluded.schedule_json,
-                registrations_json = excluded.registrations_json,
-                updated_at = excluded.updated_at
-        """, (clean_key, tenant_id, status, schedule_json, registrations_json, now_str))
-    conn.close()
+    try:
+        _ensure_v2_operational_tables(conn)
+        with conn:
+            conn.execute("""
+                INSERT INTO roster_schedules (
+                    week_key, tenant_id, status, schedule_json, registrations_json, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?)
+                ON CONFLICT(week_key, tenant_id) DO UPDATE SET
+                    status = excluded.status,
+                    schedule_json = excluded.schedule_json,
+                    registrations_json = excluded.registrations_json,
+                    updated_at = excluded.updated_at
+            """, (clean_key, tenant_id, status, schedule_json, registrations_json, now_str))
+    finally:
+        conn.close()
     return True
 
 
@@ -67,14 +69,16 @@ def get_roster_schedule_db(
         return None
     clean_key = str(week_key).strip()
     conn = get_db_connection(db_path)
-    _ensure_v2_operational_tables(conn)
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT schedule_json, registrations_json, status, updated_at FROM roster_schedules WHERE tenant_id = ? AND week_key = ? LIMIT 1",
-        (tenant_id, clean_key)
-    )
-    row = cur.fetchone()
-    conn.close()
+    try:
+        _ensure_v2_operational_tables(conn)
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT schedule_json, registrations_json, status, updated_at FROM roster_schedules WHERE tenant_id = ? AND week_key = ? LIMIT 1",
+            (tenant_id, clean_key)
+        )
+        row = cur.fetchone()
+    finally:
+        conn.close()
     if not row:
         return None
 
@@ -105,14 +109,16 @@ def list_roster_schedules_db(
     List all week roster schedules keyed by week_key: {week_key: week_dict}.
     """
     conn = get_db_connection(db_path)
-    _ensure_v2_operational_tables(conn)
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT week_key, schedule_json, registrations_json, status, updated_at FROM roster_schedules WHERE tenant_id = ? ORDER BY week_key ASC",
-        (tenant_id,)
-    )
-    rows = cur.fetchall()
-    conn.close()
+    try:
+        _ensure_v2_operational_tables(conn)
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT week_key, schedule_json, registrations_json, status, updated_at FROM roster_schedules WHERE tenant_id = ? ORDER BY week_key ASC",
+            (tenant_id,)
+        )
+        rows = cur.fetchall()
+    finally:
+        conn.close()
 
     weeks = {}
     for r in rows:
