@@ -4,7 +4,7 @@
 # ==============================================================================
 
 # Stage 1: Build dependencies & virtual environment
-FROM python:3.12-slim-bookworm AS builder
+FROM python:3.15-slim-bookworm AS builder
 
 WORKDIR /build
 
@@ -17,7 +17,7 @@ COPY requirements.txt pyproject.toml ./
 RUN pip install --no-cache-dir --user -r requirements.txt
 
 # Stage 2: Minimalist, hardened production runner
-FROM python:3.12-slim-bookworm AS runner
+FROM python:3.15-slim-bookworm AS runner
 
 LABEL org.opencontainers.image.title="FnBOps Workforce & Store Operations OS" \
       org.opencontainers.image.vendor="Nguyen Dai Hoanh (VNAIGC) <hoanh@vnaigc.com>" \
